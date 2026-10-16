@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog/1.9"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog/1.9 http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-1.9.xsd">
+ <changeSet id="surveillance-geography-20261015" author="sihsalus">
+  <createTable tableName="surveillance_center_coordinates">
+   <column name="address_hierarchy_entry_id" type="int"><constraints primaryKey="true" nullable="false"/></column>
+   <column name="latitude" type="double"><constraints nullable="false"/></column>
+   <column name="longitude" type="double"><constraints nullable="false"/></column>
+  </createTable>
+  <createTable tableName="surveillance_risk_config">
+   <column name="id" type="int"><constraints primaryKey="true" nullable="false"/></column>
+   <column name="lower_bounds" type="varchar(100)"><constraints nullable="false"/></column>
+  </createTable>
+  <insert tableName="surveillance_risk_config"><column name="id" valueNumeric="1"/><column name="lower_bounds" value="10,20,50"/></insert>
+ </changeSet>
+</databaseChangeLog>

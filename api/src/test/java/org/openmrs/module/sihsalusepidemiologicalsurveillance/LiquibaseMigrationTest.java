@@ -74,6 +74,22 @@ public class LiquibaseMigrationTest {
 			liquibase.update("");
 			liquibase.update("");
 			try (Statement sql = connection.createStatement();
+			        ResultSet config = sql.executeQuery("select lower_bounds from surveillance_risk_config where id=1")) {
+				assertTrue(config.next());
+				assertEquals("10,20,50", config.getString(1));
+				assertFalse(config.next());
+			}
+			try (Statement sql = connection.createStatement()) {
+				sql.execute("insert into surveillance_center_coordinates values (1,-3.75,-73.25)");
+				fails(sql, "insert into surveillance_center_coordinates values (1,-4,-74)");
+				try (ResultSet coordinates = sql.executeQuery(
+				    "select latitude,longitude from surveillance_center_coordinates where address_hierarchy_entry_id=1")) {
+					assertTrue(coordinates.next());
+					assertEquals(-3.75, coordinates.getDouble(1), 0);
+					assertEquals(-73.25, coordinates.getDouble(2), 0);
+				}
+			}
+			try (Statement sql = connection.createStatement();
 			        ResultSet config = sql.executeQuery("select lower_bounds from surveillance_age_group_config")) {
 				assertTrue(config.next());
 				assertEquals("0,2,12,18,30,60", config.getString(1));

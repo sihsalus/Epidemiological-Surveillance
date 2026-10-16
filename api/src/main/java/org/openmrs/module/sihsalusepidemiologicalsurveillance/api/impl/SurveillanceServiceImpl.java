@@ -16,6 +16,135 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.*;
 public class SurveillanceServiceImpl extends BaseOpenmrsService implements SurveillanceService {
 	
 	@Override
+	public int[] getRiskThresholds() {
+		access.require(SurveillanceConstants.ACCESS);
+		return GeographicCalculator.thresholds(dao.riskThresholds());
+	}
+
+	@Override
+	public int[] saveRiskThresholds(List<Integer> bounds) {
+		access.require(SurveillanceConstants.MANAGE);
+		if (bounds == null || bounds.size() != 3)
+			throw new SurveillanceException(422, "INVALID_RISK_LEVELS");
+		String stored = bounds.get(0) + "," + bounds.get(1) + "," + bounds.get(2);
+		int[] validated = GeographicCalculator.thresholds(stored);
+		dao.saveRiskThresholds(stored);
+		return validated;
+	}
+
+	@Override
+	public Map<String, Integer> importCoordinates(String csv) {
+		access.require(SurveillanceConstants.MANAGE);
+		Map<String, double[]> parsed = GeographicCalculator.parseCsv(csv);
+		Map<String, Integer> codes = new HashMap<String, Integer>();
+		Set<String> ambiguous = new HashSet<String>();
+		for (Object[] row : dao.populatedCenterCodes()) {
+			if (row[1] == null)
+				continue;
+			String code = row[1].toString();
+			if (codes.put(code, ((Number) row[0]).intValue()) != null)
+				ambiguous.add(code);
+		}
+		int pending = 0;
+		for (Map.Entry<String, double[]> entry : parsed.entrySet()) {
+			dao.saveCoordinateCode(entry.getKey(), entry.getValue()[0], entry.getValue()[1]);
+			if (!codes.containsKey(entry.getKey()) || ambiguous.contains(entry.getKey()))
+				pending++;
+		}
+		Map<String, Integer> result = new LinkedHashMap<String, Integer>();
+		result.put("imported", parsed.size());
+		result.put("matched", parsed.size() - pending);
+		result.put("pending", pending);
+		return result;
+	}
+
+	@Override
+	public GeographicReport geography(String eventUuid, String from, String to, String zoneLevel, String address) {
+		return geography(eventUuid, from, to, zoneLevel, address, "CONFIRMADO");
+	}
+
+	@Override
+	public GeographicReport geography(String eventUuid, String from, String to, String zoneLevel, String address,
+	        String diagnosisType) {
+		access.require(SurveillanceConstants.REPORT);
+		if (!Arrays.asList("CONFIRMADO", "PROBABLE", "TODOS").contains(diagnosisType))
+			throw new SurveillanceException(422, "INVALID_DIAGNOSIS_TYPE");
+		EpidemiologicalCalendar calendar = new EpidemiologicalCalendar(catalog.get());
+		LocalDate start, end;
+		try {
+			start = LocalDate.parse(from);
+			end = LocalDate.parse(to);
+		}
+		catch (RuntimeException ex) {
+			throw new SurveillanceException(422, "INVALID_DATE_RANGE");
+		}
+		if (start.isAfter(end) || start.getYear() != end.getYear() || end.isAfter(calendar.today()))
+			throw new SurveillanceException(422, "INVALID_GEOGRAPHIC_RANGE");
+		if (!Arrays.asList("DEPARTAMENTO", "PROVINCIA", "DISTRITO", "CENTRO_POBLADO").contains(zoneLevel))
+			throw new SurveillanceException(422, "INVALID_ZONE_LEVEL");
+		Integer addressId = ClinicalCatalogService.present(address) ? dao.addressId(address, reportAddressField(zoneLevel))
+		        : null;
+		if (ClinicalCatalogService.present(address) && addressId == null)
+			throw new SurveillanceException(422, "INVALID_REPORT_ADDRESS");
+		Map<String, String> diseases = new HashMap<String, String>();
+		for (ClinicalCatalog.Disease disease : catalog.get().diseases)
+			for (ClinicalCatalog.DiagnosisMapping mapping : disease.diagnoses)
+				diseases.put(mapping.diagnosisConceptUuid, disease.eventUuid);
+		boolean found = false;
+		for (NotifiableEvent event : dao.events()) {
+			if (event.getConcept() != null)
+				diseases.put(event.getConcept().getUuid(), event.getUuid());
+			if (event.getUuid().equals(eventUuid))
+				found = true;
+		}
+		if (!found)
+			throw new SurveillanceException(422, "INVALID_EVENT");
+		List<GeographicCalculator.Record> records = new ArrayList<GeographicCalculator.Record>();
+		Map<Integer, Integer> ancestors = new HashMap<Integer, Integer>();
+		for (SurveillanceCase value : dao.surveillanceCases()) {
+			if (value.isVoided() || !Arrays.asList("CONFIRMADO", "PROBABLE").contains(value.getDiagnosisType())
+			        || !"TODOS".equals(diagnosisType) && !diagnosisType.equals(value.getDiagnosisType())
+			        || value.getDiagnosis() == null
+			        || value.getDiagnosis().getVoided() || value.getDiagnosis().getDiagnosis() == null
+			        || value.getDiagnosis().getDiagnosis().getCoded() == null || value.getInfectionAddress() == null
+			        || value.getOnsetDate() == null)
+				continue;
+			if (!eventUuid.equals(diseases.get(value.getDiagnosis().getDiagnosis().getCoded().getUuid())))
+				continue;
+			Integer center = value.getInfectionAddress();
+			if (addressId != null) {
+				if (!ancestors.containsKey(center))
+					ancestors.put(
+					    center,
+					    "CENTRO_POBLADO".equals(zoneLevel) ? center : dao.ancestorIdForPopulatedCenter(center,
+					        reportAddressField(zoneLevel)));
+				if (!addressId.equals(ancestors.get(center)))
+					continue;
+			}
+			GeographicCalculator.Record record = new GeographicCalculator.Record();
+			record.center = center;
+			record.date = calendar.local(value.getOnsetDate());
+			record.origin = value.getOrigin();
+			records.add(record);
+		}
+		GeographicReport report = new GeographicCalculator().calculate(records, start, end,
+		    GeographicCalculator.thresholds(dao.riskThresholds()));
+		Map<Integer, Object[]> coordinates = new HashMap<Integer, Object[]>();
+		for (Object[] row : dao.centerCoordinates())
+			coordinates.put(((Number) row[0]).intValue(), row);
+		for (GeographicReport.Focus focus : report.foci) {
+			focus.label = dao.addressDisplay(focus.centerId);
+			Object[] row = coordinates.get(focus.centerId);
+			if (row != null && row[1] != null && row[2] != null) {
+				focus.latitude = ((Number) row[1]).doubleValue();
+				focus.longitude = ((Number) row[2]).doubleValue();
+			} else
+				report.unmappedCases += focus.total;
+		}
+		return report;
+	}
+
+	@Override
 	public List<AgeGroup> getAgeGroups() {
 		access.require(SurveillanceConstants.ACCESS);
 		return configuredAgeGroups();
@@ -573,6 +702,24 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		}
 	}
 	
+	private String residenceDisplay(String residence) {
+		if (residence == null)
+			return null;
+		String[] parts = residence.split(" → ", -1);
+		if (parts.length != 4)
+			return residence;
+		boolean firstIsDepartment = false;
+		boolean lastIsDepartment = false;
+		for (Object[] department : dao.addressChildren("ADDRESS_1", null)) {
+			String name = String.valueOf(department[1]).trim();
+			firstIsDepartment |= name.equalsIgnoreCase(parts[0].trim());
+			lastIsDepartment |= name.equalsIgnoreCase(parts[3].trim());
+		}
+		// Normalize older snapshots for display without replacing their historical data.
+		return lastIsDepartment && !firstIsDepartment
+		        ? joinNonBlank(" → ", parts[3], parts[0], parts[1], parts[2]) : residence;
+	}
+
 	private SurveillanceCaseResponse response(SurveillanceCase value) {
 		SurveillanceCaseResponse r = new SurveillanceCaseResponse();
 		r.uuid = value.getUuid();
@@ -588,7 +735,7 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		r.patientDisplay = joinNonBlank(" ", r.patientGivenNames, r.patientPaternalSurname, r.patientMaternalSurname);
 		r.patientSex = value.getPatientSex();
 		r.patientAge = value.getPatientAge();
-		r.patientResidence = value.getPatientResidence();
+		r.patientResidence = residenceDisplay(value.getPatientResidence());
 		r.pregnant = value.getPregnant();
 		r.patientBirthDate = value.getPatient().getBirthdate() == null ? null : value.getPatient().getBirthdate().toString();
 		r.encounterUuid = value.getEncounter().getUuid();

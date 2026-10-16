@@ -9,6 +9,18 @@ import org.openmrs.Patient;
 import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.*;
 
 public interface SurveillanceDao {
+
+	String riskThresholds();
+
+	void saveRiskThresholds(String bounds);
+
+	List<Object[]> populatedCenterCodes();
+
+	List<Object[]> centerCoordinates();
+
+	void saveCoordinates(Integer id, double latitude, double longitude);
+
+	void saveCoordinateCode(String code, double latitude, double longitude);
 	
 	<T extends BaseOpenmrsObject> T save(T entity);
 	

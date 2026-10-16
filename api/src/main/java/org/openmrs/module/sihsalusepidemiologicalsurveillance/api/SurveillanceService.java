@@ -15,6 +15,22 @@ public interface SurveillanceService extends OpenmrsService {
 	
 	@Authorized(SurveillanceConstants.ACCESS)
 	@Transactional(readOnly = true)
+	int[] getRiskThresholds();
+
+	@Authorized(SurveillanceConstants.MANAGE)
+	int[] saveRiskThresholds(List<Integer> bounds);
+
+	@Authorized(SurveillanceConstants.MANAGE)
+	Map<String, Integer> importCoordinates(String csv);
+
+	@Authorized(SurveillanceConstants.REPORT)
+	@Transactional(readOnly = true)
+	GeographicReport geography(String event, String from, String to, String zoneLevel, String address);
+
+	GeographicReport geography(String event, String from, String to, String zoneLevel, String address, String diagnosisType);
+
+	@Authorized(SurveillanceConstants.ACCESS)
+	@Transactional(readOnly = true)
 	List<AgeGroup> getAgeGroups();
 
 	@Authorized(SurveillanceConstants.MANAGE)

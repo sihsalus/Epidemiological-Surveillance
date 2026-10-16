@@ -86,6 +86,15 @@ enumeraciones, fechas, residencia o centro poblado inválidos. Las respuestas 42
 
 ## Catálogos geográficos
 
+`GET /reports/geography` requiere el privilegio de indicadores y acepta `event`,
+`from`, `to`, `zoneLevel` y `address`. El rango debe pertenecer al mismo año.
+El parámetro opcional `diagnosisType` admite `CONFIRMADO` (predeterminado),
+`PROBABLE` y `TODOS`. `TODOS` incluye confirmados y probables, nunca descartados.
+Se aplica al mapa, riesgo, tabla por origen, pastel e historial de clasificación
+del foco. La clasificación consulta el historial hasta el año de referencia,
+incluso fuera del intervalo seleccionado. Otros valores producen HTTP 422 con
+`INVALID_DIAGNOSIS_TYPE`.
+
 ## Indicadores
 
 `GET /reports` requiere `Vigilancia Epidemiologica: Ver Indicadores` y los parámetros

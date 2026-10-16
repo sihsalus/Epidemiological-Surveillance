@@ -17,6 +17,26 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.Surveillance
 public class CaseSnapshotTest {
 
 	@Test
+	public void legacyResidenceDisplaysDepartmentFirstWithoutChangingSnapshot() {
+		SyntheticFixture f = new SyntheticFixture();
+		f.service.createDraft(f.surveillanceRequest);
+		ArgumentCaptor<SurveillanceCase> captured = ArgumentCaptor.forClass(SurveillanceCase.class);
+		verify(f.dao).save(captured.capture());
+		SurveillanceCase saved = captured.getValue();
+		when(f.dao.byUuid(SurveillanceCase.class, saved.getUuid())).thenReturn(saved);
+		when(f.dao.addressChildren("ADDRESS_1", null)).thenReturn(
+		    java.util.Collections.singletonList(new Object[] { "department-id", "Department" }));
+		String legacy = "Province → District → Village → Department";
+		saved.setPatientResidence(legacy);
+		assertEquals("Department → Province → District → Village", f.service.getDraft(saved.getUuid()).patientResidence);
+		assertEquals(legacy, saved.getPatientResidence());
+		saved.setPatientResidence("Department → Province → District → Village");
+		assertEquals(saved.getPatientResidence(), f.service.getDraft(saved.getUuid()).patientResidence);
+		saved.setPatientResidence("Province → District → Village");
+		assertEquals(saved.getPatientResidence(), f.service.getDraft(saved.getUuid()).patientResidence);
+	}
+
+	@Test
 	public void pregnancyUsesCompletedYearsAtInvestigationIncludingBothLimits() {
 		String[] births = { "2016-01-21", "2016-01-20", "1970-01-21", "1970-01-20" };
 		int[] ages = { 9, 10, 55, 56 };

@@ -13,6 +13,85 @@ import org.openmrs.api.db.hibernate.DbSessionFactory;
 import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.*;
 
 public class HibernateSurveillanceDao implements SurveillanceDao {
+
+	@Override
+	public String riskThresholds() {
+		Object value = sessionFactory.getCurrentSession()
+		        .createSQLQuery("select lower_bounds from surveillance_risk_config where id = 1").uniqueResult();
+		return value == null ? null : value.toString();
+	}
+
+	@Override
+	public void saveRiskThresholds(String bounds) {
+		sessionFactory.getCurrentSession()
+		        .createSQLQuery("update surveillance_risk_config set lower_bounds = :bounds where id = 1")
+		        .setString("bounds", bounds).executeUpdate();
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public List<Object[]> populatedCenterCodes() {
+		return sessionFactory
+		        .getCurrentSession()
+		        .createSQLQuery(
+		            "select e.address_hierarchy_entry_id, e.user_generated_id from address_hierarchy_entry e join address_hierarchy_level l on l.address_hierarchy_level_id = e.level_id where l.address_field = 'CITY_VILLAGE'")
+		        .list();
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public List<Object[]> centerCoordinates() {
+		List<Object[]> result = new java.util.ArrayList<Object[]>(sessionFactory
+		        .getCurrentSession()
+		        .createSQLQuery(
+		            "select address_hierarchy_entry_id, latitude, longitude from surveillance_center_coordinates").list());
+		// Resolve codes at read time, including centers added to the territorial catalog after an import.
+		result.addAll(sessionFactory
+		        .getCurrentSession()
+		        .createSQLQuery(
+		            "select c.id, s.latitude, s.longitude from surveillance_coordinate_codes s join "
+		                    + "(select e.user_generated_id as code, min(e.address_hierarchy_entry_id) as id from address_hierarchy_entry e "
+		                    + "join address_hierarchy_level l on l.address_hierarchy_level_id = e.level_id where l.address_field = 'CITY_VILLAGE' "
+		                    + "group by e.user_generated_id having count(*) = 1) c on c.code = s.center_code").list());
+		return result;
+	}
+
+	@Override
+	public void saveCoordinateCode(String code, double latitude, double longitude) {
+		sessionFactory.getCurrentSession().createSQLQuery("select id from surveillance_risk_config where id = 1 for update")
+		        .uniqueResult();
+		Object existing = sessionFactory.getCurrentSession()
+		        .createSQLQuery("select center_code from surveillance_coordinate_codes where center_code = :code")
+		        .setString("code", code).uniqueResult();
+		String sql = existing == null ? "insert into surveillance_coordinate_codes (center_code, latitude, longitude) values (:code, :lat, :lon)"
+		        : "update surveillance_coordinate_codes set latitude = :lat, longitude = :lon where center_code = :code";
+		sessionFactory.getCurrentSession().createSQLQuery(sql).setString("code", code).setDouble("lat", latitude)
+		        .setDouble("lon", longitude).executeUpdate();
+	}
+
+	@Override
+	public void saveCoordinates(Integer id, double latitude, double longitude) {
+		// Serialize imports using the singleton configuration row; the service transaction covers the entire file.
+		sessionFactory.getCurrentSession().createSQLQuery("select id from surveillance_risk_config where id = 1 for update")
+		        .uniqueResult();
+		Object existing = sessionFactory
+		        .getCurrentSession()
+		        .createSQLQuery(
+		            "select address_hierarchy_entry_id from surveillance_center_coordinates where address_hierarchy_entry_id = :id")
+		        .setInteger("id", id).uniqueResult();
+		if (existing != null)
+			sessionFactory
+			        .getCurrentSession()
+			        .createSQLQuery(
+			            "update surveillance_center_coordinates set latitude = :lat, longitude = :lon where address_hierarchy_entry_id = :id")
+			        .setDouble("lat", latitude).setDouble("lon", longitude).setInteger("id", id).executeUpdate();
+		else
+			sessionFactory
+			        .getCurrentSession()
+			        .createSQLQuery(
+			            "insert into surveillance_center_coordinates (address_hierarchy_entry_id, latitude, longitude) values (:id, :lat, :lon)")
+			        .setDouble("lat", latitude).setDouble("lon", longitude).setInteger("id", id).executeUpdate();
+	}
 	
 	private DbSessionFactory sessionFactory;
 	

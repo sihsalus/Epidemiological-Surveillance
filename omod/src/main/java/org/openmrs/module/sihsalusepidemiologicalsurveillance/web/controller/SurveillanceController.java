@@ -13,6 +13,34 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/rest/v1/sihsalusepidemiologicalsurveillance")
 public class SurveillanceController {
 	
+	@RequestMapping(value = "/configuration/risk-levels", method = RequestMethod.GET)
+	@ResponseBody
+	public int[] riskThresholds() {
+		return service().getRiskThresholds();
+	}
+
+	@RequestMapping(value = "/configuration/risk-levels", method = RequestMethod.PUT, consumes = MediaType.APPLICATION_JSON_VALUE)
+	@ResponseBody
+	public int[] saveRiskThresholds(@RequestBody List<Integer> bounds) {
+		return service().saveRiskThresholds(bounds);
+	}
+
+	@RequestMapping(value = "/configuration/coordinates", method = RequestMethod.PUT, consumes = MediaType.APPLICATION_JSON_VALUE)
+	@ResponseBody
+	public Map<String, Integer> importCoordinates(@RequestBody Map<String, String> body) {
+		return service().importCoordinates(body.get("csv"));
+	}
+
+	@RequestMapping(value = "/reports/geography", method = RequestMethod.GET)
+	@ResponseBody
+	public GeographicReport geography(@RequestParam("event") String event, @RequestParam("from") String from,
+	        @RequestParam("to") String to,
+	        @RequestParam(value = "zoneLevel", defaultValue = "DEPARTAMENTO") String zoneLevel,
+	        @RequestParam(value = "address", required = false) String address,
+	        @RequestParam(value = "diagnosisType", defaultValue = "CONFIRMADO") String diagnosisType) {
+		return service().geography(event, from, to, zoneLevel, address, diagnosisType);
+	}
+
 	@RequestMapping(value = "/configuration/age-groups", method = RequestMethod.GET)
 	@ResponseBody
 	public List<AgeGroup> ageGroups() {

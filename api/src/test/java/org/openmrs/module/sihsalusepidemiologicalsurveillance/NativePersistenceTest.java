@@ -15,6 +15,62 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 /** OpenMRS core synthetic dataset, real Spring service wiring and Hibernate queries. */
 public class NativePersistenceTest extends BaseModuleContextSensitiveTest {
+
+	@Test
+	public void coordinatesAndRiskSettingsSurviveReloadAndRepeatedImports() {
+		Context.getAdministrationService()
+		        .executeSQL(
+		            "create table if not exists surveillance_coordinate_codes (center_code varchar(255) primary key, latitude double, longitude double)",
+		            false);
+		Context.getAdministrationService()
+		        .executeSQL(
+		            "create table if not exists address_hierarchy_entry (address_hierarchy_entry_id int primary key, parent_id int, name varchar(255), level_id int)",
+		            false);
+		Context.getAdministrationService().executeSQL(
+		    "alter table address_hierarchy_entry add column if not exists user_generated_id varchar(255)", false);
+		Context.getAdministrationService()
+		        .executeSQL(
+		            "create table if not exists address_hierarchy_level (address_hierarchy_level_id int primary key, address_field varchar(255))",
+		            false);
+		Context.getAdministrationService().executeSQL(
+		    "create table if not exists surveillance_risk_config (id int primary key, lower_bounds varchar(100))", false);
+		Context.getAdministrationService()
+		        .executeSQL(
+		            "create table if not exists surveillance_center_coordinates (address_hierarchy_entry_id int primary key, latitude double, longitude double)",
+		            false);
+		Context.getAdministrationService().executeSQL("delete from surveillance_risk_config", false);
+		Context.getAdministrationService().executeSQL("delete from surveillance_center_coordinates", false);
+		Context.getAdministrationService().executeSQL("insert into surveillance_risk_config values (1,'10,20,50')", false);
+		dao.saveCoordinates(42, -3.75, -73.25);
+		dao.saveCoordinates(42, -3.75, -73.25);
+		dao.saveCoordinates(43, -4.0, -74.0);
+		dao.saveCoordinates(42, -3.5, -73.0);
+		dao.saveRiskThresholds("5,15,30");
+		Context.flushSession();
+		Context.clearSession();
+		assertEquals("5,15,30", dao.riskThresholds());
+		assertEquals(2, dao.centerCoordinates().size());
+		dao.saveCoordinateCode("pending-center", -5, -75);
+		dao.saveCoordinateCode("pending-center", -5, -75);
+		assertEquals(2, dao.centerCoordinates().size());
+		Context.getAdministrationService().executeSQL("insert into address_hierarchy_level values (9900,'CITY_VILLAGE')",
+		    false);
+		Context.getAdministrationService()
+		        .executeSQL(
+		            "insert into address_hierarchy_entry (address_hierarchy_entry_id,level_id,user_generated_id) values (9900,9900,'pending-center')",
+		            false);
+		assertEquals(3, dao.centerCoordinates().size());
+		Context.getAdministrationService()
+		        .executeSQL(
+		            "insert into address_hierarchy_entry (address_hierarchy_entry_id,level_id,user_generated_id) values (9901,9900,'pending-center')",
+		            false);
+		assertEquals(2, dao.centerCoordinates().size());
+		for (Object[] row : dao.centerCoordinates())
+			if (((Number) row[0]).intValue() == 42) {
+				assertEquals(-3.5, ((Number) row[1]).doubleValue(), 0);
+				assertEquals(-73.0, ((Number) row[2]).doubleValue(), 0);
+			}
+	}
 	
 	@Test
 	public void ageConfigurationSurvivesSessionReloadAndUpdate() {
