@@ -74,6 +74,14 @@ public class LiquibaseMigrationTest {
 			liquibase.update("");
 			liquibase.update("");
 			try (Statement sql = connection.createStatement();
+			        ResultSet config = sql.executeQuery(
+			            "select historical_years, minimum_years from surveillance_endemic_config where id=1")) {
+				assertTrue(config.next());
+				assertEquals(5, config.getInt(1));
+				assertEquals(3, config.getInt(2));
+				assertFalse(config.next());
+			}
+			try (Statement sql = connection.createStatement();
 			        ResultSet config = sql.executeQuery("select lower_bounds from surveillance_risk_config where id=1")) {
 				assertTrue(config.next());
 				assertEquals("10,20,50", config.getString(1));
@@ -126,6 +134,8 @@ public class LiquibaseMigrationTest {
 				tasks.close();
 				sql.execute(
 				    "insert into notifiable_event(notifiable_event_id,uuid,concept_id,periodicity,reference_regulation,valid_from,creator,date_created) values(10,'event',1,'SEMANAL','test',CURRENT_DATE,1,CURRENT_TIMESTAMP)");
+				fails(sql,
+				    "insert into notifiable_event(uuid,concept_id,periodicity,reference_regulation,valid_from,active,creator,date_created) values('duplicate-event',1,'SEMANAL','test','2020-01-01',false,1,CURRENT_TIMESTAMP)");
 				fails(sql,
 				    "insert into outbreak_alert_rule(uuid,notifiable_event_id,condition_type,version,valid_from,active,creator,date_created) values('orphan',99,'UMBRAL_CANAL',1,CURRENT_DATE,true,1,CURRENT_TIMESTAMP)");
 				sql.execute(

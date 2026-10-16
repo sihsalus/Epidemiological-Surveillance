@@ -21,6 +21,16 @@ public class NotifiableEvent extends BaseOpenmrsObject {
 	
 	private Date validTo;
 	
+	private boolean active = true;
+	
+	public boolean isActive() {
+		return active;
+	}
+	
+	public void setActive(boolean value) {
+		active = value;
+	}
+	
 	private User creator;
 	
 	private Date dateCreated;
@@ -80,12 +90,12 @@ public class NotifiableEvent extends BaseOpenmrsObject {
 	}
 	
 	public boolean isActiveOn(Date date) {
-		return validFrom != null && !validFrom.after(date) && (validTo == null || !validTo.before(date));
+		return active;
 	}
 	
-	/** Compatibility projection only; it is derived, never persisted. */
+	/** Compatibility projection of the persisted state. */
 	public boolean isRetired() {
-		return !isActiveOn(new Date());
+		return !active;
 	}
 	
 	/** Notification deadline is derived from periodicity, not a database column. */

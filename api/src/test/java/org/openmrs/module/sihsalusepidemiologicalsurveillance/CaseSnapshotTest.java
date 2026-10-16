@@ -15,7 +15,7 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.api.model.Surveill
 import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.SurveillanceCase;
 
 public class CaseSnapshotTest {
-
+	
 	@Test
 	public void legacyResidenceDisplaysDepartmentFirstWithoutChangingSnapshot() {
 		SyntheticFixture f = new SyntheticFixture();
@@ -24,8 +24,8 @@ public class CaseSnapshotTest {
 		verify(f.dao).save(captured.capture());
 		SurveillanceCase saved = captured.getValue();
 		when(f.dao.byUuid(SurveillanceCase.class, saved.getUuid())).thenReturn(saved);
-		when(f.dao.addressChildren("ADDRESS_1", null)).thenReturn(
-		    java.util.Collections.singletonList(new Object[] { "department-id", "Department" }));
+		when(f.dao.addressChildren("ADDRESS_1", null))
+		        .thenReturn(java.util.Collections.singletonList(new Object[] { "department-id", "Department" }));
 		String legacy = "Province → District → Village → Department";
 		saved.setPatientResidence(legacy);
 		assertEquals("Department → Province → District → Village", f.service.getDraft(saved.getUuid()).patientResidence);
@@ -35,7 +35,7 @@ public class CaseSnapshotTest {
 		saved.setPatientResidence("Province → District → Village");
 		assertEquals(saved.getPatientResidence(), f.service.getDraft(saved.getUuid()).patientResidence);
 	}
-
+	
 	@Test
 	public void pregnancyUsesCompletedYearsAtInvestigationIncludingBothLimits() {
 		String[] births = { "2016-01-21", "2016-01-20", "1970-01-21", "1970-01-20" };
@@ -49,7 +49,7 @@ public class CaseSnapshotTest {
 			assertEquals(ages[i] >= 10 && ages[i] <= 55, result.pregnant);
 		}
 	}
-
+	
 	@Test
 	public void pregnancyIsNoForMaleOrMissingBirthDate() {
 		SyntheticFixture f = new SyntheticFixture();
@@ -62,7 +62,7 @@ public class CaseSnapshotTest {
 		assertFalse(result.pregnant);
 		assertNull(result.patientAge);
 	}
-
+	
 	@Test
 	public void patientCopiesSurvivePatientChangesAndCaseUpdates() {
 		SyntheticFixture f = new SyntheticFixture();
@@ -99,14 +99,14 @@ public class CaseSnapshotTest {
 		assertEquals("Province → District → Village", result.patientResidence);
 		assertTrue(result.pregnant);
 	}
-
+	
 	@Test
 	public void investigationComesFromEncounterRegardlessOfRequest() {
 		SyntheticFixture f = new SyntheticFixture();
 		f.surveillanceRequest.investigationDate = "2099-01-01";
 		assertEquals("2026-01-20", f.service.createDraft(f.surveillanceRequest).investigationDate);
 	}
-
+	
 	@Test
 	public void datesRejectFutureAndNotificationBeforeInvestigation() {
 		for (String notification : new String[] { "2026-01-19", "2999-01-01" }) {
@@ -132,7 +132,7 @@ public class CaseSnapshotTest {
 			assertEquals("INVALID_DATE_RANGE", ex.getCode());
 		}
 	}
-
+	
 	@Test
 	public void investigationAndNotificationCanEqualToday() {
 		SyntheticFixture f = new SyntheticFixture();

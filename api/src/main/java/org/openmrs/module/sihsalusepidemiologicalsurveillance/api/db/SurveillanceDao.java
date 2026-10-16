@@ -9,17 +9,23 @@ import org.openmrs.Patient;
 import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.*;
 
 public interface SurveillanceDao {
-
+	
+	void lockEventConcept(org.openmrs.Concept concept);
+	
+	int[] endemicSettings();
+	
+	void saveEndemicSettings(int years, int minimum);
+	
 	String riskThresholds();
-
+	
 	void saveRiskThresholds(String bounds);
-
+	
 	List<Object[]> populatedCenterCodes();
-
+	
 	List<Object[]> centerCoordinates();
-
+	
 	void saveCoordinates(Integer id, double latitude, double longitude);
-
+	
 	void saveCoordinateCode(String code, double latitude, double longitude);
 	
 	<T extends BaseOpenmrsObject> T save(T entity);
@@ -54,7 +60,7 @@ public interface SurveillanceDao {
 	Integer districtIdForPopulatedCenter(Integer populatedCenterId);
 	
 	Integer ancestorIdForPopulatedCenter(Integer populatedCenterId, String field);
-
+	
 	List<SurveillanceCase> surveillanceCases();
 	
 	SurveillanceCase caseByDiagnosis(org.openmrs.Diagnosis diagnosis);

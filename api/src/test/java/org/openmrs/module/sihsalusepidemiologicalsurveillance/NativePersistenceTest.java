@@ -15,29 +15,39 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 /** OpenMRS core synthetic dataset, real Spring service wiring and Hibernate queries. */
 public class NativePersistenceTest extends BaseModuleContextSensitiveTest {
-
+	
+	@Test
+	public void endemicSettingsSurviveReload() {
+		Context.getAdministrationService().executeSQL(
+		    "create table if not exists surveillance_endemic_config (id int primary key, historical_years int, minimum_years int)",
+		    false);
+		Context.getAdministrationService().executeSQL("delete from surveillance_endemic_config", false);
+		Context.getAdministrationService().executeSQL("insert into surveillance_endemic_config values (1,5,3)", false);
+		assertArrayEquals(new int[] { 5, 3 }, dao.endemicSettings());
+		dao.saveEndemicSettings(8, 4);
+		Context.flushSession();
+		Context.clearSession();
+		assertArrayEquals(new int[] { 8, 4 }, dao.endemicSettings());
+	}
+	
 	@Test
 	public void coordinatesAndRiskSettingsSurviveReloadAndRepeatedImports() {
-		Context.getAdministrationService()
-		        .executeSQL(
-		            "create table if not exists surveillance_coordinate_codes (center_code varchar(255) primary key, latitude double, longitude double)",
-		            false);
-		Context.getAdministrationService()
-		        .executeSQL(
-		            "create table if not exists address_hierarchy_entry (address_hierarchy_entry_id int primary key, parent_id int, name varchar(255), level_id int)",
-		            false);
+		Context.getAdministrationService().executeSQL(
+		    "create table if not exists surveillance_coordinate_codes (center_code varchar(255) primary key, latitude double, longitude double)",
+		    false);
+		Context.getAdministrationService().executeSQL(
+		    "create table if not exists address_hierarchy_entry (address_hierarchy_entry_id int primary key, parent_id int, name varchar(255), level_id int)",
+		    false);
 		Context.getAdministrationService().executeSQL(
 		    "alter table address_hierarchy_entry add column if not exists user_generated_id varchar(255)", false);
-		Context.getAdministrationService()
-		        .executeSQL(
-		            "create table if not exists address_hierarchy_level (address_hierarchy_level_id int primary key, address_field varchar(255))",
-		            false);
+		Context.getAdministrationService().executeSQL(
+		    "create table if not exists address_hierarchy_level (address_hierarchy_level_id int primary key, address_field varchar(255))",
+		    false);
 		Context.getAdministrationService().executeSQL(
 		    "create table if not exists surveillance_risk_config (id int primary key, lower_bounds varchar(100))", false);
-		Context.getAdministrationService()
-		        .executeSQL(
-		            "create table if not exists surveillance_center_coordinates (address_hierarchy_entry_id int primary key, latitude double, longitude double)",
-		            false);
+		Context.getAdministrationService().executeSQL(
+		    "create table if not exists surveillance_center_coordinates (address_hierarchy_entry_id int primary key, latitude double, longitude double)",
+		    false);
 		Context.getAdministrationService().executeSQL("delete from surveillance_risk_config", false);
 		Context.getAdministrationService().executeSQL("delete from surveillance_center_coordinates", false);
 		Context.getAdministrationService().executeSQL("insert into surveillance_risk_config values (1,'10,20,50')", false);
@@ -55,15 +65,13 @@ public class NativePersistenceTest extends BaseModuleContextSensitiveTest {
 		assertEquals(2, dao.centerCoordinates().size());
 		Context.getAdministrationService().executeSQL("insert into address_hierarchy_level values (9900,'CITY_VILLAGE')",
 		    false);
-		Context.getAdministrationService()
-		        .executeSQL(
-		            "insert into address_hierarchy_entry (address_hierarchy_entry_id,level_id,user_generated_id) values (9900,9900,'pending-center')",
-		            false);
+		Context.getAdministrationService().executeSQL(
+		    "insert into address_hierarchy_entry (address_hierarchy_entry_id,level_id,user_generated_id) values (9900,9900,'pending-center')",
+		    false);
 		assertEquals(3, dao.centerCoordinates().size());
-		Context.getAdministrationService()
-		        .executeSQL(
-		            "insert into address_hierarchy_entry (address_hierarchy_entry_id,level_id,user_generated_id) values (9901,9900,'pending-center')",
-		            false);
+		Context.getAdministrationService().executeSQL(
+		    "insert into address_hierarchy_entry (address_hierarchy_entry_id,level_id,user_generated_id) values (9901,9900,'pending-center')",
+		    false);
 		assertEquals(2, dao.centerCoordinates().size());
 		for (Object[] row : dao.centerCoordinates())
 			if (((Number) row[0]).intValue() == 42) {
@@ -87,12 +95,12 @@ public class NativePersistenceTest extends BaseModuleContextSensitiveTest {
 		dao.save(config);
 		Context.flushSession();
 		Context.clearSession();
-		assertEquals(
-		    "0,3,12,18,30,60",
-		    dao.byUuid(org.openmrs.module.sihsalusepidemiologicalsurveillance.model.AgeGroupConfiguration.class,
-		        org.openmrs.module.sihsalusepidemiologicalsurveillance.model.AgeGroupConfiguration.UUID).getLowerBounds());
+		assertEquals("0,3,12,18,30,60", dao
+		        .byUuid(org.openmrs.module.sihsalusepidemiologicalsurveillance.model.AgeGroupConfiguration.class,
+		            org.openmrs.module.sihsalusepidemiologicalsurveillance.model.AgeGroupConfiguration.UUID)
+		        .getLowerBounds());
 	}
-
+	
 	@Test
 	public void hibernatePersistsSnapshotButNeverUpdatesItsColumns() {
 		Patient patient = Context.getPatientService().getPatient(2);
@@ -155,7 +163,7 @@ public class NativePersistenceTest extends BaseModuleContextSensitiveTest {
 		assertEquals("Synthetic residence", value.getPatientResidence());
 		assertFalse(value.getPregnant());
 	}
-
+	
 	@Autowired
 	private SurveillanceDao dao;
 	
@@ -185,13 +193,14 @@ public class NativePersistenceTest extends BaseModuleContextSensitiveTest {
 				value.setDiagnosisType("CONFIRMADO");
 			if (edit == 4)
 				value.setInfectionAddress(101);
-			dao.replaceCounts(event, calculator.aggregateSurveillanceCases(event, Collections.singletonList(value),
-			    Collections.singletonMap(value.getInfectionAddress(), 10), metadata, Context.getAuthenticatedUser(),
-			    java.time.LocalDate.of(2026, 9, 13)));
+			dao.replaceCounts(event,
+			    calculator.aggregateSurveillanceCases(event, Collections.singletonList(value),
+			        Collections.singletonMap(value.getInfectionAddress(), 10), metadata, Context.getAuthenticatedUser(),
+			        java.time.LocalDate.of(2026, 9, 13)));
 			Context.flushSession();
 			Context.clearSession();
-			java.util.List<org.openmrs.module.sihsalusepidemiologicalsurveillance.model.PeriodCaseCount> daily = dao.counts(
-			    event, "dia", 2026, 2026, "CENTRO_POBLADO", null);
+			java.util.List<org.openmrs.module.sihsalusepidemiologicalsurveillance.model.PeriodCaseCount> daily = dao
+			        .counts(event, "dia", 2026, 2026, "CENTRO_POBLADO", null);
 			assertEquals("Only one daily bucket after edit " + edit, 1, daily.size());
 			assertEquals(Integer.valueOf(1), daily.get(0).getCaseCount());
 			assertEquals(value.getOnsetDate().toString(), daily.get(0).getStartDate().toString());
@@ -200,9 +209,8 @@ public class NativePersistenceTest extends BaseModuleContextSensitiveTest {
 		}
 		value.setDiagnosisType("DESCARTADO");
 		dao.replaceCounts(event,
-		    calculator.aggregateSurveillanceCases(event, Collections.singletonList(value),
-		        Collections.singletonMap(101, 10), metadata, Context.getAuthenticatedUser(),
-		        java.time.LocalDate.of(2026, 9, 13)));
+		    calculator.aggregateSurveillanceCases(event, Collections.singletonList(value), Collections.singletonMap(101, 10),
+		        metadata, Context.getAuthenticatedUser(), java.time.LocalDate.of(2026, 9, 13)));
 		Context.flushSession();
 		Context.clearSession();
 		assertTrue(dao.counts(event, "dia", 2026, 2026).isEmpty());

@@ -97,6 +97,23 @@ incluso fuera del intervalo seleccionado. Otros valores producen HTTP 422 con
 
 ## Indicadores
 
+Información temporal admite únicamente fechas del año calendario actual según
+la zona horaria del catálogo; otros años devuelven 422 `OUTSIDE_CURRENT_YEAR`.
+`GET /configuration/endemic-channel` (acceso al módulo) devuelve
+`[historicalYears, minimumHistoricalYears]`. `PUT` en la misma ruta requiere
+administración y guarda ese arreglo de dos enteros positivos: mínimo ≤ histórico
+y histórico < año actual. Valores iniciales `[5,3]`; errores de configuración:
+422 `INVALID_ENDEMIC_SETTINGS`. La migración `liquibase-endemic-config.xml`
+persiste estos parámetros, usados por el reporte temporal.
+
+`GET /reports` añade `historicalYears` (años anteriores al año calendario actual,
+en orden descendente) y `channel[].historicalCases` (año → casos). Se aplican los
+mismos filtros que al reporte. Un periodo histórico válido sin casos registrados
+se presenta como cero en `historicalCases`, sin aumentar la muestra estadística
+para los cuartiles. Un periodo inexistente en ese año no tiene entrada.
+Seleccionar años en el cliente cambia las series
+visibles pero no los cuartiles ni el mínimo de historia suficiente.
+
 `GET /reports` requiere `Vigilancia Epidemiologica: Ver Indicadores` y los parámetros
 `event` (UUID), `from` y `to` (fechas inclusivas `YYYY-MM-DD`).
 
@@ -121,14 +138,17 @@ fuera de esta iteración). Nivel, diagnóstico o dirección incompatible produce
 
 ## Eventos notificables
 
-`POST /events` crea una nueva versión con `conceptUuid`, `periodicity`
-(`SEMANAL` o `INMEDIATA`), `referenceRegulation`, `validFrom` y, opcionalmente,
-`validTo`. El nombre se deriva de `concept_name` y el plazo de notificación de la
-periodicidad. `PUT /events/{uuid}/valid-to` recibe `{ "validTo": "YYYY-MM-DD" }` y
-cierra esa vigencia por compatibilidad. `PUT /events/{uuid}` permite editar
-`conceptUuid`, `periodicity`, `referenceRegulation`, `validFrom` y `validTo`
-con el mismo privilegio de administración y las validaciones de creación.
-El formulario envía todos los atributos; `validTo: null` quita la fecha final.
+`POST /events` crea un evento con `conceptUuid`, `periodicity`
+(`SEMANAL` o `INMEDIATA`), `referenceRegulation` y `active` (booleano obligatorio).
+Solo se permite un evento por concepto, incluso si está inactivo; duplicados devuelven
+409 `EVENT_ALREADY_EXISTS`. El nombre se deriva de `concept_name` y el plazo de la
+periodicidad. `PUT /events/{uuid}` edita esos atributos con el mismo privilegio de
+administración, o recibe únicamente `{ "active": false }` para cambiar el estado.
+Las respuestas incluyen `active` y no exponen fechas de vigencia. El catálogo y
+`GET /events` excluyen inactivos; `includeRetired=true` permite administrarlos.
+Un nuevo caso con diagnóstico de un evento inactivo devuelve 409 `EVENT_RETIRED`.
+Los casos existentes se conservan. Las fechas del contrato anterior ya no se aceptan
+para controlar el estado.
 Se conserva el UUID y la auditoría de creación, y se registra quién y cuándo editó.
 
 | Operación | Ruta | Resultado |

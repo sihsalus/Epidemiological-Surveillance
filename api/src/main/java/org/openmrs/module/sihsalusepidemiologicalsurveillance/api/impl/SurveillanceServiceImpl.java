@@ -16,11 +16,29 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.*;
 public class SurveillanceServiceImpl extends BaseOpenmrsService implements SurveillanceService {
 	
 	@Override
+	public int[] getEndemicSettings() {
+		access.require(SurveillanceConstants.ACCESS);
+		int[] values = dao.endemicSettings();
+		return values == null ? new int[] { 5, 3 } : values;
+	}
+	
+	@Override
+	public int[] saveEndemicSettings(List<Integer> values) {
+		access.require(SurveillanceConstants.MANAGE);
+		int currentYear = new EpidemiologicalCalendar(catalog.get()).today().getYear();
+		if (values == null || values.size() != 2 || values.contains(null) || values.get(0) < 1
+		        || values.get(0) >= currentYear || values.get(1) < 1 || values.get(1) > values.get(0))
+			throw new SurveillanceException(422, "INVALID_ENDEMIC_SETTINGS");
+		dao.saveEndemicSettings(values.get(0), values.get(1));
+		return new int[] { values.get(0), values.get(1) };
+	}
+	
+	@Override
 	public int[] getRiskThresholds() {
 		access.require(SurveillanceConstants.ACCESS);
 		return GeographicCalculator.thresholds(dao.riskThresholds());
 	}
-
+	
 	@Override
 	public int[] saveRiskThresholds(List<Integer> bounds) {
 		access.require(SurveillanceConstants.MANAGE);
@@ -31,7 +49,7 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		dao.saveRiskThresholds(stored);
 		return validated;
 	}
-
+	
 	@Override
 	public Map<String, Integer> importCoordinates(String csv) {
 		access.require(SurveillanceConstants.MANAGE);
@@ -57,12 +75,12 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		result.put("pending", pending);
 		return result;
 	}
-
+	
 	@Override
 	public GeographicReport geography(String eventUuid, String from, String to, String zoneLevel, String address) {
 		return geography(eventUuid, from, to, zoneLevel, address, "CONFIRMADO");
 	}
-
+	
 	@Override
 	public GeographicReport geography(String eventUuid, String from, String to, String zoneLevel, String address,
 	        String diagnosisType) {
@@ -104,20 +122,17 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		for (SurveillanceCase value : dao.surveillanceCases()) {
 			if (value.isVoided() || !Arrays.asList("CONFIRMADO", "PROBABLE").contains(value.getDiagnosisType())
 			        || !"TODOS".equals(diagnosisType) && !diagnosisType.equals(value.getDiagnosisType())
-			        || value.getDiagnosis() == null
-			        || value.getDiagnosis().getVoided() || value.getDiagnosis().getDiagnosis() == null
-			        || value.getDiagnosis().getDiagnosis().getCoded() == null || value.getInfectionAddress() == null
-			        || value.getOnsetDate() == null)
+			        || value.getDiagnosis() == null || value.getDiagnosis().getVoided()
+			        || value.getDiagnosis().getDiagnosis() == null || value.getDiagnosis().getDiagnosis().getCoded() == null
+			        || value.getInfectionAddress() == null || value.getOnsetDate() == null)
 				continue;
 			if (!eventUuid.equals(diseases.get(value.getDiagnosis().getDiagnosis().getCoded().getUuid())))
 				continue;
 			Integer center = value.getInfectionAddress();
 			if (addressId != null) {
 				if (!ancestors.containsKey(center))
-					ancestors.put(
-					    center,
-					    "CENTRO_POBLADO".equals(zoneLevel) ? center : dao.ancestorIdForPopulatedCenter(center,
-					        reportAddressField(zoneLevel)));
+					ancestors.put(center, "CENTRO_POBLADO".equals(zoneLevel) ? center
+					        : dao.ancestorIdForPopulatedCenter(center, reportAddressField(zoneLevel)));
 				if (!addressId.equals(ancestors.get(center)))
 					continue;
 			}
@@ -143,18 +158,18 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		}
 		return report;
 	}
-
+	
 	@Override
 	public List<AgeGroup> getAgeGroups() {
 		access.require(SurveillanceConstants.ACCESS);
 		return configuredAgeGroups();
 	}
-
+	
 	private List<AgeGroup> configuredAgeGroups() {
 		AgeGroupConfiguration config = dao.byUuid(AgeGroupConfiguration.class, AgeGroupConfiguration.UUID);
 		return DemographicCalculator.groups(config == null ? null : config.getLowerBounds());
 	}
-
+	
 	@Override
 	public List<AgeGroup> saveAgeGroups(List<AgeGroup> groups) {
 		access.require(SurveillanceConstants.MANAGE);
@@ -168,16 +183,16 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		dao.save(config);
 		return DemographicCalculator.groups(bounds);
 	}
-
+	
 	@Override
-	public DemographicReport demographics(String from, String to, String row, String column, String period,
-	        String eventUuid, String compareEvents, String diagnosisType) {
+	public DemographicReport demographics(String from, String to, String row, String column, String period, String eventUuid,
+	        String compareEvents, String diagnosisType) {
 		return demographics(from, to, row, column, period, eventUuid, compareEvents, diagnosisType, "CENTRO_POBLADO", null);
 	}
-
+	
 	@Override
-	public DemographicReport demographics(String from, String to, String row, String column, String period,
-	        String eventUuid, String compareEvents, String diagnosisType, String zoneLevel, String address) {
+	public DemographicReport demographics(String from, String to, String row, String column, String period, String eventUuid,
+	        String compareEvents, String diagnosisType, String zoneLevel, String address) {
 		access.require(SurveillanceConstants.REPORT);
 		if (!Arrays.asList("DEPARTAMENTO", "PROVINCIA", "DISTRITO", "CENTRO_POBLADO").contains(zoneLevel))
 			throw new SurveillanceException(422, "INVALID_ZONE_LEVEL");
@@ -285,7 +300,7 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		result.address = addressId == null ? null : address;
 		return result;
 	}
-
+	
 	private String demographicEthnicity(Patient patient, ClinicalCatalog metadata) {
 		if (patient == null || !ClinicalCatalogService.present(metadata.ethnicityAttributeTypeUuid))
 			return null;
@@ -304,7 +319,7 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		}
 		return concept == null ? null : concept.getDisplayString();
 	}
-
+	
 	private SurveillanceDao dao;
 	
 	private ClinicalData clinical;
@@ -401,18 +416,14 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		User actor = access.require(SurveillanceConstants.MANAGE);
 		NotifiableEvent event = requiredEvent(uuid);
 		dao.lockEvent(event);
-		if (body != null
-		        && (body.containsKey("conceptUuid") || body.containsKey("periodicity")
-		                || body.containsKey("referenceRegulation") || body.containsKey("validFrom")))
-			return writeEvent(body, event);
-		Date validTo = date(string(body, "validTo"));
-		if (validTo == null || event.getValidFrom() == null || validTo.before(event.getValidFrom()))
-			throw new SurveillanceException(422, "INVALID_EVENT");
-		event.setValidTo(validTo);
-		event.setChangedBy(actor);
-		event.setDateChanged(new Date());
-		dao.save(event);
-		return eventJson(event);
+		if (body != null && body.size() == 1 && body.get("active") instanceof Boolean) {
+			event.setActive((Boolean) body.get("active"));
+			event.setChangedBy(actor);
+			event.setDateChanged(new Date());
+			dao.save(event);
+			return eventJson(event);
+		}
+		return writeEvent(body, event);
 	}
 	
 	@Override
@@ -430,22 +441,24 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 	public List<SurveillanceCaseResponse> listCases(String patientUuid, String diagnosisConceptUuid, String onsetFrom,
 	        String onsetTo, String notificationFrom, String notificationTo, Boolean fatal) {
 		access.require(SurveillanceConstants.VIEW);
-		Date onsetStart = date(onsetFrom), onsetEnd = date(onsetTo), notificationStart = date(notificationFrom), notificationEnd = date(notificationTo);
-		if (onsetStart != null && onsetEnd != null && onsetEnd.before(onsetStart) || notificationStart != null
-		        && notificationEnd != null && notificationEnd.before(notificationStart))
+		Date onsetStart = date(onsetFrom), onsetEnd = date(onsetTo), notificationStart = date(notificationFrom),
+		        notificationEnd = date(notificationTo);
+		if (onsetStart != null && onsetEnd != null && onsetEnd.before(onsetStart)
+		        || notificationStart != null && notificationEnd != null && notificationEnd.before(notificationStart))
 			throw new SurveillanceException(422, "INVALID_DATE_RANGE");
 		List<SurveillanceCaseResponse> result = new ArrayList<SurveillanceCaseResponse>();
 		for (SurveillanceCase value : dao.surveillanceCases()) {
 			String conceptUuid = value.getDiagnosis() == null || value.getDiagnosis().getDiagnosis() == null
-			        || value.getDiagnosis().getDiagnosis().getCoded() == null ? null : value.getDiagnosis().getDiagnosis()
-			        .getCoded().getUuid();
+			        || value.getDiagnosis().getDiagnosis().getCoded() == null ? null
+			                : value.getDiagnosis().getDiagnosis().getCoded().getUuid();
 			if (patientUuid != null && (value.getPatient() == null || !patientUuid.equals(value.getPatient().getUuid()))
-			        || diagnosisConceptUuid != null && !diagnosisConceptUuid.equals(conceptUuid) || onsetStart != null
-			        && (value.getOnsetDate() == null || value.getOnsetDate().before(onsetStart)) || onsetEnd != null
-			        && (value.getOnsetDate() == null || value.getOnsetDate().after(onsetEnd)) || notificationStart != null
-			        && (value.getNotificationDate() == null || value.getNotificationDate().before(notificationStart))
+			        || diagnosisConceptUuid != null && !diagnosisConceptUuid.equals(conceptUuid)
+			        || onsetStart != null && (value.getOnsetDate() == null || value.getOnsetDate().before(onsetStart))
+			        || onsetEnd != null && (value.getOnsetDate() == null || value.getOnsetDate().after(onsetEnd))
+			        || notificationStart != null
+			                && (value.getNotificationDate() == null || value.getNotificationDate().before(notificationStart))
 			        || notificationEnd != null
-			        && (value.getNotificationDate() == null || value.getNotificationDate().after(notificationEnd))
+			                && (value.getNotificationDate() == null || value.getNotificationDate().after(notificationEnd))
 			        || fatal != null && fatal.booleanValue() != (value.getDeathDate() != null))
 				continue;
 			result.add(response(value));
@@ -516,8 +529,10 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 	@Override
 	public List<Map<String, Object>> addressChildren(String level, String parentUuid) {
 		access.require(SurveillanceConstants.VIEW);
-		String field = "departments".equals(level) ? "ADDRESS_1" : "provinces".equals(level) ? "STATE_PROVINCE"
-		        : "districts".equals(level) ? "COUNTY_DISTRICT" : "populated-centers".equals(level) ? "CITY_VILLAGE" : null;
+		String field = "departments".equals(level) ? "ADDRESS_1"
+		        : "provinces".equals(level) ? "STATE_PROVINCE"
+		                : "districts".equals(level) ? "COUNTY_DISTRICT"
+		                        : "populated-centers".equals(level) ? "CITY_VILLAGE" : null;
 		if (field == null)
 			throw new SurveillanceException(422, "INVALID_ADDRESS_LEVEL");
 		List<Map<String, Object>> result = new ArrayList<Map<String, Object>>();
@@ -530,7 +545,8 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		return result;
 	}
 	
-	private SurveillanceCase populate(SurveillanceCase value, SurveillanceCaseRequest request, User actor, boolean creating) {
+	private SurveillanceCase populate(SurveillanceCase value, SurveillanceCaseRequest request, User actor,
+	        boolean creating) {
 		if (request == null)
 			throw new SurveillanceException(422, "REQUIRED_FIELDS");
 		String[] keys = { "patientUuid", "encounterUuid", "providerUuid", "locationUuid", "diagnosisUuid", "diagnosisType" };
@@ -555,11 +571,11 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 			throw new SurveillanceException(422, "INVALID_REFERENCE", "locationUuid", "selection");
 		if (diagnosis == null || diagnosis.getVoided() || !encounter.equals(diagnosis.getEncounter()))
 			throw new SurveillanceException(422, "INVALID_REFERENCE", "diagnosisUuid", "selection");
+		if (creating)
+			requireActiveDiagnosis(diagnosis);
 		SurveillanceCase existing = dao.caseByDiagnosis(diagnosis);
-		if (!creating
-		        && value.getPatient() != null
-		        && (!patient.equals(value.getPatient()) || !encounter.equals(value.getEncounter()) || !diagnosis
-		                .equals(value.getDiagnosis())))
+		if (!creating && value.getPatient() != null && (!patient.equals(value.getPatient())
+		        || !encounter.equals(value.getEncounter()) || !diagnosis.equals(value.getDiagnosis())))
 			throw new SurveillanceException(422, "INVALID_REFERENCE");
 		if (existing != null && !existing.equals(value))
 			throw new SurveillanceException(409, "CASE_ALREADY_EXISTS_FOR_DIAGNOSIS",
@@ -567,9 +583,8 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		if (!Arrays.asList("CONFIRMADO", "PROBABLE", "DESCARTADO").contains(request.diagnosisType))
 			throw new SurveillanceException(422, "INVALID_CLASSIFICATION", Collections.singletonList("diagnosisType"));
 		request.origin = normalizeOrigin(request.origin);
-		if (request.origin != null
-		        && !Arrays.asList("AUTOCTONO", "IMPORTADO_NACIONAL", "IMPORTADO_INTERNACIONAL", "INDUCIDO", "INTRODUCIDO",
-		            "RECAIDA", "RECRUDESCENCIA").contains(request.origin))
+		if (request.origin != null && !Arrays.asList("AUTOCTONO", "IMPORTADO_NACIONAL", "IMPORTADO_INTERNACIONAL",
+		    "INDUCIDO", "INTRODUCIDO", "RECAIDA", "RECRUDESCENCIA").contains(request.origin))
 			throw new SurveillanceException(422, "INVALID_CLASSIFICATION", "origin", "selection");
 		if (request.vaccinationStatus != null && !Arrays.asList("SI", "NO", "IGN").contains(request.vaccinationStatus))
 			throw new SurveillanceException(422, "INVALID_CLASSIFICATION", "vaccinationStatus", "selection");
@@ -601,8 +616,8 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		if (ClinicalCatalogService.present(request.laboratoryObservationUuid)) {
 			observation = clinical.observation(request.laboratoryObservationUuid);
 			if (observation == null || observation.getVoided() || !patient.equals(observation.getPerson())
-			        || !encounter.equals(observation.getEncounter()) || testOrder != null
-			        && !testOrder.equals(observation.getOrder()))
+			        || !encounter.equals(observation.getEncounter())
+			        || testOrder != null && !testOrder.equals(observation.getOrder()))
 				throw new SurveillanceException(422, "INVALID_LAB_RESULT", "laboratoryObservationUuid", "invalidLaboratory");
 			testOrder = observation.getOrder();
 		}
@@ -646,7 +661,7 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 			value.setPatientResidence(joinNonBlank(" → ", address.getAddress1(), address.getStateProvince(),
 			    address.getCountyDistrict(), address.getCityVillage(), address.getAddress2()));
 	}
-
+	
 	private String joinNonBlank(String separator, String... values) {
 		List<String> parts = new ArrayList<String>();
 		for (String part : values)
@@ -654,7 +669,7 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 				parts.add(part);
 		return parts.isEmpty() ? null : String.join(separator, parts);
 	}
-
+	
 	private String normalizeOrigin(String value) {
 		if ("AUTOCHTHONOUS".equals(value))
 			return "AUTOCTONO";
@@ -674,7 +689,8 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		if (notification != null && notification.isAfter(calendar.today()))
 			throw new SurveillanceException(422, "INVALID_DATE_RANGE", "notificationDate", "future");
 		if (notification != null && investigation.isAfter(notification))
-			throw new SurveillanceException(422, "INVALID_DATE_RANGE", "notificationDate", "notificationBeforeInvestigation");
+			throw new SurveillanceException(422, "INVALID_DATE_RANGE", "notificationDate",
+			        "notificationBeforeInvestigation");
 		if (value.getOnsetDate() != null) {
 			if (value.getOnsetDate().after(value.getInvestigationDate()))
 				throw new SurveillanceException(422, "INVALID_DATE_RANGE", "onsetDate", "afterCare");
@@ -688,7 +704,7 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 	private Date date(String value) {
 		return date(value, null);
 	}
-
+	
 	private Date date(String value, String field) {
 		if (!ClinicalCatalogService.present(value))
 			return null;
@@ -700,6 +716,26 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 				throw new SurveillanceException(422, "INVALID_DATE", field, "dateFormat");
 			throw new SurveillanceException(422, "INVALID_DATE");
 		}
+	}
+	
+	private void requireActiveDiagnosis(Diagnosis diagnosis) {
+		Concept concept = diagnosis.getDiagnosis() == null ? null : diagnosis.getDiagnosis().getCoded();
+		if (concept == null)
+			throw new SurveillanceException(422, "INVALID_REFERENCE", "diagnosisUuid", "selection");
+		Set<String> mappedEvents = new HashSet<String>();
+		for (ClinicalCatalog.Disease disease : catalog.get().diseases)
+			for (ClinicalCatalog.DiagnosisMapping mapping : disease.diagnoses)
+				if (concept.getUuid().equals(mapping.diagnosisConceptUuid))
+					mappedEvents.add(disease.eventUuid);
+		for (NotifiableEvent event : dao.events()) {
+			if (concept.equals(event.getConcept()) || mappedEvents.contains(event.getUuid())) {
+				dao.lockEvent(event);
+				if (!event.isActive())
+					throw new SurveillanceException(409, "EVENT_RETIRED");
+				return;
+			}
+		}
+		throw new SurveillanceException(422, "INVALID_REFERENCE", "diagnosisUuid", "selection");
 	}
 	
 	private String residenceDisplay(String residence) {
@@ -716,10 +752,10 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 			lastIsDepartment |= name.equalsIgnoreCase(parts[3].trim());
 		}
 		// Normalize older snapshots for display without replacing their historical data.
-		return lastIsDepartment && !firstIsDepartment
-		        ? joinNonBlank(" → ", parts[3], parts[0], parts[1], parts[2]) : residence;
+		return lastIsDepartment && !firstIsDepartment ? joinNonBlank(" → ", parts[3], parts[0], parts[1], parts[2])
+		        : residence;
 	}
-
+	
 	private SurveillanceCaseResponse response(SurveillanceCase value) {
 		SurveillanceCaseResponse r = new SurveillanceCaseResponse();
 		r.uuid = value.getUuid();
@@ -739,33 +775,33 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		r.pregnant = value.getPregnant();
 		r.patientBirthDate = value.getPatient().getBirthdate() == null ? null : value.getPatient().getBirthdate().toString();
 		r.encounterUuid = value.getEncounter().getUuid();
-		r.encounterDisplay = value.getEncounter().getEncounterType() == null ? null : value.getEncounter()
-		        .getEncounterType().getName();
-		r.encounterDate = value.getEncounter().getEncounterDatetime() == null ? null : value.getEncounter()
-		        .getEncounterDatetime().toString();
+		r.encounterDisplay = value.getEncounter().getEncounterType() == null ? null
+		        : value.getEncounter().getEncounterType().getName();
+		r.encounterDate = value.getEncounter().getEncounterDatetime() == null ? null
+		        : value.getEncounter().getEncounterDatetime().toString();
 		r.providerDisplay = value.getProvider().getName();
 		r.locationDisplay = value.getLocation().getName();
 		r.providerUuid = value.getProvider().getUuid();
 		r.locationUuid = value.getLocation().getUuid();
 		r.diagnosisUuid = value.getDiagnosis().getUuid();
 		r.diagnosisDisplay = value.getDiagnosis().getDiagnosis() == null
-		        || value.getDiagnosis().getDiagnosis().getCoded() == null ? null : value.getDiagnosis().getDiagnosis()
-		        .getCoded().getDisplayString();
+		        || value.getDiagnosis().getDiagnosis().getCoded() == null ? null
+		                : value.getDiagnosis().getDiagnosis().getCoded().getDisplayString();
 		r.testOrderUuid = value.getTestOrder() == null ? null : value.getTestOrder().getUuid();
-		r.testOrderDisplay = value.getTestOrder() == null || value.getTestOrder().getConcept() == null ? null : value
-		        .getTestOrder().getConcept().getDisplayString();
+		r.testOrderDisplay = value.getTestOrder() == null || value.getTestOrder().getConcept() == null ? null
+		        : value.getTestOrder().getConcept().getDisplayString();
 		Obs laboratory = value.getLaboratoryObservation();
 		r.laboratoryObservationUuid = laboratory == null || laboratory.getVoided() ? null : laboratory.getUuid();
 		r.laboratoryObservationDisplay = laboratory == null || laboratory.getVoided() ? null
-		        : laboratory.getValueCoded() != null ? laboratory.getValueCoded().getDisplayString() : laboratory
-		                .getValueText();
+		        : laboratory.getValueCoded() != null ? laboratory.getValueCoded().getDisplayString()
+		                : laboratory.getValueText();
 		r.origin = value.getOrigin();
 		r.diagnosisType = value.getDiagnosisType();
 		r.vaccinationStatus = value.getVaccinationStatus();
 		r.surveillanceType = value.getSurveillanceType();
 		r.infectionAddressUuid = value.getInfectionAddress() == null ? null : dao.addressUuid(value.getInfectionAddress());
-		r.infectionAddressDisplay = value.getInfectionAddress() == null ? null : dao.addressDisplay(value
-		        .getInfectionAddress());
+		r.infectionAddressDisplay = value.getInfectionAddress() == null ? null
+		        : dao.addressDisplay(value.getInfectionAddress());
 		r.onsetDate = value.getOnsetDate() == null ? null : value.getOnsetDate().toString();
 		r.investigationDate = value.getInvestigationDate() == null ? null : value.getInvestigationDate().toString();
 		r.notificationDate = value.getNotificationDate() == null ? null : value.getNotificationDate().toString();
@@ -789,9 +825,8 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		Encounter existing = clinical.encounter(request.sourceEncounterUuid);
 		if (existing != null && !existing.getVoided() && patient.equals(existing.getPatient())) {
 			Obs onset = CaseObservations.find(existing, m.questions.get("onset"));
-			if (onset != null
-			        && (onset.getCreator() == null || !onset.getCreator().equals(actor) || !fingerprint(request).equals(
-			            onset.getComment())))
+			if (onset != null && (onset.getCreator() == null || !onset.getCreator().equals(actor)
+			        || !fingerprint(request).equals(onset.getComment())))
 				throw new SurveillanceException(409, "IDEMPOTENCY_CONFLICT");
 			if (onset != null) {
 				CaseResult result = assess(existing, m);
@@ -824,7 +859,8 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		coded(encounter, m, "event", event.getConcept());
 		coded(encounter, m, "status",
 		    clinical.concept(ClinicalCatalogService.choice(m.statuses, request.status).conceptUuid));
-		coded(encounter, m, "origin", clinical.concept(ClinicalCatalogService.choice(m.origins, request.origin).conceptUuid));
+		coded(encounter, m, "origin",
+		    clinical.concept(ClinicalCatalogService.choice(m.origins, request.origin).conceptUuid));
 		if (v.disease != null && !v.disease.severities.isEmpty() && ClinicalCatalogService.present(request.severity))
 			coded(encounter, m, "severity",
 			    clinical.concept(ClinicalCatalogService.choice(v.disease.severities, request.severity).conceptUuid));
@@ -970,6 +1006,8 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		}
 		EpidemiologicalCalendar calendar = new EpidemiologicalCalendar(m);
 		calendar.number(start, period);
+		if (start.getYear() != calendar.today().getYear() || end.getYear() != calendar.today().getYear())
+			throw new SurveillanceException(422, "OUTSIDE_CURRENT_YEAR");
 		if (end.isBefore(start) || end.isAfter(calendar.today()))
 			throw new SurveillanceException(422, "INVALID_DATE_RANGE");
 		if (start.isBefore(LocalDate.parse(m.surveillanceStartDate)))
@@ -978,8 +1016,11 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		String countLevel = ancestor ? "CENTRO_POBLADO" : zoneLevel;
 		Integer countAddress = ancestor ? null : addressId;
 		List<PeriodCaseCount> daily = dao.counts(event, "dia", start.getYear(), end.getYear(), countLevel, countAddress);
-		List<PeriodCaseCount> counts = dao.counts(event, period, calendar.year(start, period) - m.historicalYears,
-		    calendar.year(end, period) - 1, countLevel, countAddress);
+		int[] settings = dao.endemicSettings();
+		m.historicalYears = settings == null ? 5 : settings[0];
+		m.minimumHistoricalYears = settings == null ? 3 : settings[1];
+		List<PeriodCaseCount> counts = dao.counts(event, period, start.getYear() - m.historicalYears, start.getYear() - 1,
+		    countLevel, countAddress);
 		if (ancestor && addressId != null) {
 			Map<Integer, Integer> ancestors = new HashMap<Integer, Integer>();
 			daily = filterCountsByAncestor(daily, zoneLevel, addressId, ancestors);
@@ -993,10 +1034,11 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 	}
 	
 	private static String reportAddressField(String level) {
-		return "DEPARTAMENTO".equals(level) ? "ADDRESS_1" : "PROVINCIA".equals(level) ? "STATE_PROVINCE" : "DISTRITO"
-		        .equals(level) ? "COUNTY_DISTRICT" : "CITY_VILLAGE";
+		return "DEPARTAMENTO".equals(level) ? "ADDRESS_1"
+		        : "PROVINCIA".equals(level) ? "STATE_PROVINCE"
+		                : "DISTRITO".equals(level) ? "COUNTY_DISTRICT" : "CITY_VILLAGE";
 	}
-
+	
 	private List<PeriodCaseCount> filterCountsByAncestor(List<PeriodCaseCount> counts, String level, Integer selected,
 	        Map<Integer, Integer> ancestors) {
 		List<PeriodCaseCount> result = new ArrayList<PeriodCaseCount>();
@@ -1011,7 +1053,7 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		}
 		return result;
 	}
-
+	
 	@Override
 	public void refreshCounts() {
 		User actor = access.require(SurveillanceConstants.MANAGE);
@@ -1047,8 +1089,8 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		}
 		catch (Exception ex) {
 			// Count refresh is best-effort; a failure must not roll back case registration.
-			org.apache.commons.logging.LogFactory.getLog(getClass()).warn(
-			    "refreshCountsForEvent failed for event " + event.getUuid(), ex);
+			org.apache.commons.logging.LogFactory.getLog(getClass())
+			        .warn("refreshCountsForEvent failed for event " + event.getUuid(), ex);
 		}
 	}
 	
@@ -1102,8 +1144,8 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 				String text = value == null ? "" : value;
 				canonical.append(text.length()).append(':').append(text);
 			}
-			byte[] digest = MessageDigest.getInstance("SHA-256").digest(
-			    canonical.toString().getBytes(StandardCharsets.UTF_8));
+			byte[] digest = MessageDigest.getInstance("SHA-256")
+			        .digest(canonical.toString().getBytes(StandardCharsets.UTF_8));
 			StringBuilder hex = new StringBuilder();
 			for (byte b : digest)
 				hex.append(String.format("%02x", b & 255));
@@ -1125,37 +1167,37 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 	
 	private Map<String, Object> writeEvent(Map<String, Object> body, NotifiableEvent existing) {
 		User actor = access.require(SurveillanceConstants.MANAGE);
-		String uuid = body != null && body.get("uuid") instanceof String ? string(body, "uuid") : UUID.randomUUID()
-		        .toString();
+		String uuid = body != null && body.get("uuid") instanceof String ? string(body, "uuid")
+		        : UUID.randomUUID().toString();
 		String periodicity = string(body, "periodicity").toUpperCase(Locale.ENGLISH);
 		String referenceRegulation = string(body, "referenceRegulation");
 		Concept concept = clinical.concept(string(body, "conceptUuid"));
-		Date validFrom = date(string(body, "validFrom"), "validFrom");
-		Date validTo = body.get("validTo") instanceof String ? date((String) body.get("validTo"), "validTo") : null;
+		if (!(body.get("active") instanceof Boolean))
+			throw new SurveillanceException(422, "INVALID_EVENT", "active", "selection");
 		if (concept == null || concept.getRetired())
 			throw new SurveillanceException(422, "INVALID_EVENT", "conceptUuid", "selection");
-		if (validFrom == null)
-			throw new SurveillanceException(422, "INVALID_EVENT", "validFrom", "required");
 		if (referenceRegulation.isEmpty())
 			throw new SurveillanceException(422, "INVALID_EVENT", "referenceRegulation", "required");
 		if (referenceRegulation.length() > 100)
 			throw new SurveillanceException(422, "INVALID_EVENT", "referenceRegulation", "referenceLength");
-		if (validTo != null && validTo.before(validFrom))
-			throw new SurveillanceException(422, "INVALID_EVENT", "validTo", "endBeforeStart");
 		if (!Arrays.asList("SEMANAL", "INMEDIATA").contains(periodicity))
 			throw new SurveillanceException(422, "INVALID_EVENT", "periodicity", "selection");
+		dao.lockEventConcept(concept);
+		for (NotifiableEvent other : dao.events())
+			if (concept.equals(other.getConcept()) && (existing == null || !existing.getUuid().equals(other.getUuid())))
+				throw new SurveillanceException(409, "EVENT_ALREADY_EXISTS");
 		NotifiableEvent event = existing;
 		if (event == null) {
 			event = new NotifiableEvent();
 			event.setUuid(uuid);
+			event.setValidFrom(new Date());
 			event.setCreator(actor);
 			event.setDateCreated(new Date());
 		}
 		event.setConcept(concept);
 		event.setPeriodicity(periodicity);
 		event.setReferenceRegulation(referenceRegulation);
-		event.setValidFrom(validFrom);
-		event.setValidTo(validTo);
+		event.setActive((Boolean) body.get("active"));
 		if (existing != null) {
 			event.setChangedBy(actor);
 			event.setDateChanged(new Date());
@@ -1199,8 +1241,7 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		value.put("periodicity", event.getPeriodicity());
 		value.put("deadlineDays", event.getDeadlineDays());
 		value.put("referenceRegulation", event.getReferenceRegulation());
-		value.put("validFrom", event.getValidFrom() == null ? null : event.getValidFrom().toString());
-		value.put("validTo", event.getValidTo() == null ? null : event.getValidTo().toString());
+		value.put("active", event.isActive());
 		return value;
 	}
 }

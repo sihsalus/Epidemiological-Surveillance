@@ -6,18 +6,18 @@ import java.util.*;
 import org.openmrs.module.sihsalusepidemiologicalsurveillance.api.model.*;
 
 public class DemographicCalculator {
-
-	public static final List<String> GROUPS = Collections.unmodifiableList(Arrays.asList("INFANTS", "CHILDREN",
-	    "ADOLESCENTS", "YOUNG_ADULTS", "ADULTS", "OLDER_ADULTS"));
-
-	public static final List<String> DIMENSIONS = Collections.unmodifiableList(Arrays.asList("age", "sex", "disease",
-	    "ageGroup", "ethnicity", "pregnancy", "period"));
-
-	public static final List<String> PERIODS = Collections.unmodifiableList(Arrays.asList("dia", "semana", "mes",
-	    "trimestre", "semestre", "anio"));
-
+	
+	public static final List<String> GROUPS = Collections
+	        .unmodifiableList(Arrays.asList("INFANTS", "CHILDREN", "ADOLESCENTS", "YOUNG_ADULTS", "ADULTS", "OLDER_ADULTS"));
+	
+	public static final List<String> DIMENSIONS = Collections
+	        .unmodifiableList(Arrays.asList("age", "sex", "disease", "ageGroup", "ethnicity", "pregnancy", "period"));
+	
+	public static final List<String> PERIODS = Collections
+	        .unmodifiableList(Arrays.asList("dia", "semana", "mes", "trimestre", "semestre", "anio"));
+	
 	public static final String UNKNOWN = "UNKNOWN";
-
+	
 	public static List<AgeGroup> groups(String stored) {
 		String[] bounds = (stored == null ? "0,2,12,18,30,60" : stored).split(",");
 		List<AgeGroup> result = new ArrayList<AgeGroup>();
@@ -25,8 +25,8 @@ public class DemographicCalculator {
 			if (bounds.length != GROUPS.size())
 				throw new IllegalArgumentException();
 			for (int i = 0; i < bounds.length; i++)
-				result.add(new AgeGroup(GROUPS.get(i), Integer.parseInt(bounds[i]), i + 1 == bounds.length ? null : Integer
-				        .parseInt(bounds[i + 1]) - 1));
+				result.add(new AgeGroup(GROUPS.get(i), Integer.parseInt(bounds[i]),
+				        i + 1 == bounds.length ? null : Integer.parseInt(bounds[i + 1]) - 1));
 			validateGroups(result);
 		}
 		catch (RuntimeException ex) {
@@ -34,7 +34,7 @@ public class DemographicCalculator {
 		}
 		return result;
 	}
-
+	
 	public static String validateGroups(List<AgeGroup> groups) {
 		if (groups == null || groups.size() != GROUPS.size())
 			throw new SurveillanceException(422, "INVALID_AGE_GROUPS");
@@ -51,7 +51,7 @@ public class DemographicCalculator {
 		}
 		return String.join(",", starts);
 	}
-
+	
 	public static String ageGroup(Integer age, List<AgeGroup> groups) {
 		if (age != null && age >= 0)
 			for (AgeGroup group : groups)
@@ -59,11 +59,11 @@ public class DemographicCalculator {
 					return group.key;
 		return UNKNOWN;
 	}
-
+	
 	public static LocalDate periodStart(LocalDate date, String period, EpidemiologicalCalendar calendar) {
 		return "anio".equals(period) ? date.withDayOfYear(1) : calendar.start(date, period);
 	}
-
+	
 	public static String periodLabel(LocalDate date, String period, EpidemiologicalCalendar calendar) {
 		if ("anio".equals(period))
 			return String.valueOf(date.getYear());
@@ -76,22 +76,22 @@ public class DemographicCalculator {
 			return String.format(java.util.Locale.ROOT, "%04d-%02d", year, number);
 		return year + ("trimestre".equals(period) ? "-T" : "-") + number;
 	}
-
+	
 	public static class Record {
-
+		
 		public Integer age;
-
+		
 		public String sex;
-
+		
 		public String disease;
-
+		
 		public String ethnicity;
-
+		
 		public Boolean pregnant;
-
+		
 		public LocalDate date;
 	}
-
+	
 	public DemographicReport calculate(List<Record> records, String row, String column, String period, LocalDate from,
 	        LocalDate to, List<AgeGroup> groups, Map<String, String> diseases, EpidemiologicalCalendar calendar) {
 		if (!DIMENSIONS.contains(row) || !DIMENSIONS.contains(column) || row.equals(column) || !PERIODS.contains(period))
@@ -141,7 +141,7 @@ public class DemographicCalculator {
 		}
 		return result;
 	}
-
+	
 	private LinkedHashMap<String, String> sorted(LinkedHashMap<String, String> values, String dimension) {
 		if (!"age".equals(dimension) && !"ethnicity".equals(dimension))
 			return values;
@@ -155,7 +155,7 @@ public class DemographicCalculator {
 			result.put(key, values.get(key));
 		return result;
 	}
-
+	
 	private LinkedHashMap<String, String> domain(String dimension, LocalDate from, LocalDate to, String period,
 	        List<AgeGroup> groups, Map<String, String> diseases, EpidemiologicalCalendar calendar) {
 		LinkedHashMap<String, String> result = new LinkedHashMap<String, String>();
@@ -171,23 +171,23 @@ public class DemographicCalculator {
 		if ("disease".equals(dimension))
 			result.putAll(diseases);
 		if ("period".equals(dimension)) {
-			for (LocalDate date = periodStart(from, period, calendar); !date.isAfter(to); date = "anio".equals(period) ? date
-			        .plusYears(1) : calendar.next(date, period))
+			for (LocalDate date = periodStart(from, period, calendar); !date
+			        .isAfter(to); date = "anio".equals(period) ? date.plusYears(1) : calendar.next(date, period))
 				result.put(date.toString(), periodLabel(date, period, calendar));
 		}
 		if (!"disease".equals(dimension) && !"period".equals(dimension))
 			result.put(UNKNOWN, UNKNOWN);
 		return result;
 	}
-
+	
 	private String value(Record value, String dimension, List<AgeGroup> groups, String period,
 	        EpidemiologicalCalendar calendar) {
 		switch (dimension) {
 			case "age":
 				return value.age == null || value.age < 0 ? UNKNOWN : value.age.toString();
 			case "sex":
-				return value.sex == null || value.sex.trim().isEmpty() ? UNKNOWN : Arrays.asList("F", "M").contains(
-				    value.sex) ? value.sex : "OTHER";
+				return value.sex == null || value.sex.trim().isEmpty() ? UNKNOWN
+				        : Arrays.asList("F", "M").contains(value.sex) ? value.sex : "OTHER";
 			case "ageGroup":
 				return ageGroup(value.age, groups);
 			case "disease":

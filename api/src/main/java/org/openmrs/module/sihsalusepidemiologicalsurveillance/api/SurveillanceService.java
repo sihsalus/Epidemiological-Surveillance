@@ -15,37 +15,44 @@ public interface SurveillanceService extends OpenmrsService {
 	
 	@Authorized(SurveillanceConstants.ACCESS)
 	@Transactional(readOnly = true)
+	int[] getEndemicSettings();
+	
+	@Authorized(SurveillanceConstants.MANAGE)
+	int[] saveEndemicSettings(List<Integer> values);
+	
+	@Authorized(SurveillanceConstants.ACCESS)
+	@Transactional(readOnly = true)
 	int[] getRiskThresholds();
-
+	
 	@Authorized(SurveillanceConstants.MANAGE)
 	int[] saveRiskThresholds(List<Integer> bounds);
-
+	
 	@Authorized(SurveillanceConstants.MANAGE)
 	Map<String, Integer> importCoordinates(String csv);
-
+	
 	@Authorized(SurveillanceConstants.REPORT)
 	@Transactional(readOnly = true)
 	GeographicReport geography(String event, String from, String to, String zoneLevel, String address);
-
+	
 	GeographicReport geography(String event, String from, String to, String zoneLevel, String address, String diagnosisType);
-
+	
 	@Authorized(SurveillanceConstants.ACCESS)
 	@Transactional(readOnly = true)
 	List<AgeGroup> getAgeGroups();
-
+	
 	@Authorized(SurveillanceConstants.MANAGE)
 	List<AgeGroup> saveAgeGroups(List<AgeGroup> groups);
-
+	
 	@Authorized(SurveillanceConstants.REPORT)
 	@Transactional(readOnly = true)
 	DemographicReport demographics(String from, String to, String row, String column, String period, String event,
 	        String compareEvents, String diagnosisType);
-
+	
 	@Authorized(SurveillanceConstants.REPORT)
 	@Transactional(readOnly = true)
 	DemographicReport demographics(String from, String to, String row, String column, String period, String event,
 	        String compareEvents, String diagnosisType, String zoneLevel, String address);
-
+	
 	@Authorized(SurveillanceConstants.ACCESS)
 	@Transactional(readOnly = true)
 	Map<String, Object> getCatalog();

@@ -37,7 +37,7 @@ public class SurveillanceServiceTest {
 		}
 		verify(f.dao, never()).save(any(SurveillanceCase.class));
 	}
-
+	
 	@Test
 	public void draftPreservesSelectedLaboratoryObservationAndDerivedOrder() {
 		SyntheticFixture f = new SyntheticFixture();
@@ -73,8 +73,8 @@ public class SurveillanceServiceTest {
 		assertEquals("CONFIRMADO", report.diagnosisType);
 		assertEquals("CENTRO_POBLADO", report.zoneLevel);
 		verify(f.dao).counts(f.event, "dia", 2026, 2026, "CENTRO_POBLADO", null);
-		// January 1-3 belongs to epidemiological year 2025 (Sunday-to-Saturday calendar).
-		verify(f.dao).counts(f.event, "semana", 2020, 2024, "CENTRO_POBLADO", null);
+		// Historical window is anchored to the current calendar year even for boundary weeks.
+		verify(f.dao).counts(f.event, "semana", 2021, 2025, "CENTRO_POBLADO", null);
 		verify(f.dao, never()).encounters(any(), any(), anyString());
 		verify(f.dao, never()).surveillanceCases();
 		verifyNoInteractions(f.clinical);
@@ -104,8 +104,8 @@ public class SurveillanceServiceTest {
 	@Test
 	public void reportRejectsUnsupportedGeographyAndDiscardedFilter() {
 		SyntheticFixture f = new SyntheticFixture();
-		for (String[] selection : Arrays.asList(new String[] { "INVALID", "TODOS", "INVALID_ZONE_LEVEL" }, new String[] {
-		        "DISTRITO", "DESCARTADO", "INVALID_DIAGNOSIS_TYPE" })) {
+		for (String[] selection : Arrays.asList(new String[] { "INVALID", "TODOS", "INVALID_ZONE_LEVEL" },
+		    new String[] { "DISTRITO", "DESCARTADO", "INVALID_DIAGNOSIS_TYPE" })) {
 			try {
 				f.service.report(f.event.getUuid(), "2026-01-01", "2026-01-03", "dia", selection[0], null, selection[1]);
 				fail();

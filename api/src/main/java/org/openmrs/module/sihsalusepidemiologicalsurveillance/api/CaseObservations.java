@@ -67,7 +67,7 @@ public class CaseObservations {
 		if (observation == null || observation.getValueCoded() == null)
 			return null;
 		String uuid = observation.getValueCoded().getUuid();
-		return java.util.Objects.equals(uuid, m.trueConceptUuid) ? Boolean.TRUE : java.util.Objects.equals(uuid,
-		    m.falseConceptUuid) ? Boolean.FALSE : null;
+		return java.util.Objects.equals(uuid, m.trueConceptUuid) ? Boolean.TRUE
+		        : java.util.Objects.equals(uuid, m.falseConceptUuid) ? Boolean.FALSE : null;
 	}
 }

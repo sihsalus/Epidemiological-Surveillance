@@ -124,8 +124,8 @@ public class CaseValidator {
 					}
 		}
 		if (v.diagnosis == null && dao != null) {
-			org.openmrs.module.sihsalusepidemiologicalsurveillance.model.NotifiableEvent event = dao.byUuid(
-			    org.openmrs.module.sihsalusepidemiologicalsurveillance.model.NotifiableEvent.class, r.eventUuid);
+			org.openmrs.module.sihsalusepidemiologicalsurveillance.model.NotifiableEvent event = dao
+			        .byUuid(org.openmrs.module.sihsalusepidemiologicalsurveillance.model.NotifiableEvent.class, r.eventUuid);
 			if (event != null && event.getConcept() != null) {
 				v.diagnosis = event.getConcept();
 			}
@@ -140,8 +140,8 @@ public class CaseValidator {
 			v.pregnant = CaseObservations.booleanValue(pregnancy, m);
 		if (v.pregnant == null && ClinicalCatalogService.present(m.pregnancyAttributeTypeUuid)) {
 			PersonAttributeType type = clinical.attributeType(m.pregnancyAttributeTypeUuid);
-			PersonAttribute attr = type == null || !"java.lang.Boolean".equals(type.getFormat()) ? null : v.patient
-			        .getAttribute(type);
+			PersonAttribute attr = type == null || !"java.lang.Boolean".equals(type.getFormat()) ? null
+			        : v.patient.getAttribute(type);
 			if (attr != null && !attr.getVoided()) {
 				if ("true".equalsIgnoreCase(attr.getValue()))
 					v.pregnant = true;
@@ -151,8 +151,8 @@ public class CaseValidator {
 		}
 		if (ClinicalCatalogService.present(m.ethnicityAttributeTypeUuid)) {
 			PersonAttributeType type = clinical.attributeType(m.ethnicityAttributeTypeUuid);
-			PersonAttribute attr = type == null || !"org.openmrs.Concept".equals(type.getFormat()) ? null : v.patient
-			        .getAttribute(type);
+			PersonAttribute attr = type == null || !"org.openmrs.Concept".equals(type.getFormat()) ? null
+			        : v.patient.getAttribute(type);
 			if (attr != null && !attr.getVoided())
 				try {
 					Concept ethnicity = clinical.concept(Integer.valueOf(attr.getValue()));
@@ -176,29 +176,24 @@ public class CaseValidator {
 		}
 		Obs result = clinical.observation(r.laboratoryResultUuid);
 		v.laboratory = result;
-		if (result == null
-		        || result.getVoided()
-		        || result.getPerson() == null
-		        || !result.getPerson().getUuid().equals(v.patient.getUuid())
-		        || result.getConcept() == null
-		        || result.getEncounter() == null
-		        || result.getEncounter().getVoided()
+		if (result == null || result.getVoided() || result.getPerson() == null
+		        || !result.getPerson().getUuid().equals(v.patient.getUuid()) || result.getConcept() == null
+		        || result.getEncounter() == null || result.getEncounter().getVoided()
 		        || !v.patient.equals(result.getEncounter().getPatient())
-		        || (!result.getEncounter().equals(v.source) && (v.source.getVisit() == null || !v.source.getVisit().equals(
-		            result.getEncounter().getVisit())))
+		        || (!result.getEncounter().equals(v.source)
+		                && (v.source.getVisit() == null || !v.source.getVisit().equals(result.getEncounter().getVisit())))
 		        || (result.getOrder() != null && (result.getOrder().getVoided()
-		                || !v.patient.equals(result.getOrder().getPatient()) || (result.getOrder().getEncounter() != null && result
-		                .getOrder().getEncounter().getVoided()))) || result.getValueCoded() == null
-		        || result.getObsDatetime() == null || calendar.local(result.getObsDatetime()).isBefore(v.onset)
-		        || result.getObsDatetime().after(new Date()))
+		                || !v.patient.equals(result.getOrder().getPatient())
+		                || (result.getOrder().getEncounter() != null && result.getOrder().getEncounter().getVoided())))
+		        || result.getValueCoded() == null || result.getObsDatetime() == null
+		        || calendar.local(result.getObsDatetime()).isBefore(v.onset) || result.getObsDatetime().after(new Date()))
 			throw new SurveillanceException(422, "INVALID_LAB_RESULT");
 		String expected = null;
 		if (v.disease != null && v.disease.laboratoryTests != null && !v.disease.laboratoryTests.isEmpty()) {
 			for (ClinicalCatalog.LabTest test : v.disease.laboratoryTests) {
-				if (test.resultConceptUuid.equals(result.getConcept().getUuid())
-				        && (result.getOrder() == null || result.getOrder().getConcept() == null
-				                || test.orderConceptUuid == null || test.orderConceptUuid.equals(result.getOrder()
-				                .getConcept().getUuid()))) {
+				if (test.resultConceptUuid.equals(result.getConcept().getUuid()) && (result.getOrder() == null
+				        || result.getOrder().getConcept() == null || test.orderConceptUuid == null
+				        || test.orderConceptUuid.equals(result.getOrder().getConcept().getUuid()))) {
 					if (test.positiveAnswerUuids.contains(result.getValueCoded().getUuid()))
 						expected = "CONFIRMED";
 					if (test.negativeAnswerUuids.contains(result.getValueCoded().getUuid()))

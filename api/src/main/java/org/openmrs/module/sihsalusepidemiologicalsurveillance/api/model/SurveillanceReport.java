@@ -26,6 +26,8 @@ public class SurveillanceReport {
 	
 	public int total;
 	
+	public List<Integer> historicalYears = new ArrayList<Integer>();
+	
 	public List<Point> curve = new ArrayList<Point>();
 	
 	public List<ChannelPoint> channel = new ArrayList<ChannelPoint>();
@@ -42,6 +44,8 @@ public class SurveillanceReport {
 	}
 	
 	public static class ChannelPoint extends EndemicChannel.Thresholds {
+		
+		public Map<Integer, Integer> historicalCases = new TreeMap<Integer, Integer>();
 		
 		public String date;
 		

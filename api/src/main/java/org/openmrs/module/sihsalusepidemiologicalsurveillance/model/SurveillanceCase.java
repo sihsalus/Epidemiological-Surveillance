@@ -16,75 +16,75 @@ public class SurveillanceCase extends BaseOpenmrsObject {
 	private Integer id;
 	
 	private Boolean pregnant;
-
+	
 	private String patientGivenNames;
-
+	
 	private String patientPaternalSurname;
-
+	
 	private String patientMaternalSurname;
-
+	
 	private String patientSex;
-
+	
 	private Integer patientAge;
-
+	
 	private String patientResidence;
-
+	
 	public Boolean getPregnant() {
 		return pregnant;
 	}
-
+	
 	public void setPregnant(Boolean value) {
 		pregnant = value;
 	}
-
+	
 	public String getPatientGivenNames() {
 		return patientGivenNames;
 	}
-
+	
 	public void setPatientGivenNames(String value) {
 		patientGivenNames = value;
 	}
-
+	
 	public String getPatientPaternalSurname() {
 		return patientPaternalSurname;
 	}
-
+	
 	public void setPatientPaternalSurname(String value) {
 		patientPaternalSurname = value;
 	}
-
+	
 	public String getPatientMaternalSurname() {
 		return patientMaternalSurname;
 	}
-
+	
 	public void setPatientMaternalSurname(String value) {
 		patientMaternalSurname = value;
 	}
-
+	
 	public String getPatientSex() {
 		return patientSex;
 	}
-
+	
 	public void setPatientSex(String value) {
 		patientSex = value;
 	}
-
+	
 	public Integer getPatientAge() {
 		return patientAge;
 	}
-
+	
 	public void setPatientAge(Integer value) {
 		patientAge = value;
 	}
-
+	
 	public String getPatientResidence() {
 		return patientResidence;
 	}
-
+	
 	public void setPatientResidence(String value) {
 		patientResidence = value;
 	}
-
+	
 	private Patient patient;
 	
 	private Encounter encounter;

@@ -24,27 +24,28 @@ public class NotifiableEventTest {
 		request.put("conceptUuid", concept.getUuid());
 		request.put("periodicity", "INMEDIATA");
 		request.put("referenceRegulation", "NTS actualizada");
-		request.put("validTo", "2026-12-31");
+		request.put("active", false);
 		Map<String, Object> result = f.service.updateEvent(uuid, request);
 		assertEquals(uuid, result.get("uuid"));
 		assertEquals(concept.getUuid(), result.get("conceptUuid"));
 		assertEquals("INMEDIATA", result.get("periodicity"));
 		assertEquals("NTS actualizada", result.get("referenceRegulation"));
-		assertEquals("2026-02-01", result.get("validFrom"));
-		assertEquals("2026-12-31", result.get("validTo"));
+		assertEquals(false, result.get("active"));
+		assertFalse(result.containsKey("validFrom"));
+		assertFalse(result.containsKey("validTo"));
 		assertSame(f.actor, f.event.getCreator());
 		assertSame(created, f.event.getDateCreated());
 		assertSame(f.actor, f.event.getChangedBy());
 		assertNotNull(f.event.getDateChanged());
 		verify(f.dao).lockEvent(f.event);
 		verify(f.dao).save(f.event);
-		request.put("validTo", null);
-		assertNull(f.service.updateEvent(uuid, request).get("validTo"));
+		request.put("active", true);
+		assertEquals(true, f.service.updateEvent(uuid, request).get("active"));
 	}
 	
 	@Test
 	public void invalidEditsDoNotMutateTheEvent() {
-		for (String field : Arrays.asList("validFrom", "validTo", "periodicity", "referenceRegulation")) {
+		for (String field : Arrays.asList("active", "periodicity", "referenceRegulation")) {
 			SyntheticFixture f = new SyntheticFixture();
 			Date originalStart = f.event.getValidFrom();
 			Map<String, Object> request = body(f, "2026-02-01");
@@ -78,6 +79,7 @@ public class NotifiableEventTest {
 	@Test
 	public void newEventsAcceptImmediateAndRejectDailyPeriodicity() {
 		SyntheticFixture f = new SyntheticFixture();
+		when(f.dao.events()).thenReturn(Collections.<NotifiableEvent> emptyList());
 		Map<String, Object> request = body(f, "2026-01-01");
 		request.put("periodicity", "INMEDIATA");
 		assertEquals("INMEDIATA", f.service.saveEvent(request).get("periodicity"));
@@ -94,19 +96,26 @@ public class NotifiableEventTest {
 	}
 	
 	@Test
-	public void postCreatesIndependentVersionsForTheSameConcept() {
-		SyntheticFixture f = new SyntheticFixture();
-		Map<String, Object> first = body(f, "2026-01-01");
-		Map<String, Object> second = body(f, "2027-01-01");
-		second.put("uuid", SyntheticFixture.uuid(99));
-		assertEquals("SEMANAL", f.service.saveEvent(first).get("periodicity"));
-		assertEquals("2027-01-01", f.service.saveEvent(second).get("validFrom"));
-		verify(f.dao, times(2)).save(any(NotifiableEvent.class));
+	public void rejectsDuplicateDiseaseEvenWhenInactive() {
+		for (boolean active : new boolean[] { true, false }) {
+			SyntheticFixture f = new SyntheticFixture();
+			f.event.setActive(active);
+			try {
+				f.service.saveEvent(body(f, "2026-01-01"));
+				fail("Duplicate disease must fail");
+			}
+			catch (SurveillanceException error) {
+				assertEquals("EVENT_ALREADY_EXISTS", error.getCode());
+				assertEquals(409, error.getStatus());
+			}
+			verify(f.dao, never()).save(any(NotifiableEvent.class));
+		}
 	}
 	
 	@Test
 	public void postGeneratesUuidWhenItIsNotProvided() {
 		SyntheticFixture f = new SyntheticFixture();
+		when(f.dao.events()).thenReturn(Collections.<NotifiableEvent> emptyList());
 		Map<String, Object> request = body(f, "2026-01-01");
 		request.remove("uuid");
 		
@@ -118,25 +127,51 @@ public class NotifiableEventTest {
 	}
 	
 	@Test
-	public void validToClosesAnExistingVersion() {
+	public void stateCanBeChangedWithoutReplacingTheEvent() {
 		SyntheticFixture f = new SyntheticFixture();
 		Map<String, Object> result = f.service.updateEvent(f.event.getUuid(),
-		    Collections.<String, Object> singletonMap("validTo", "2026-12-31"));
-		assertEquals("2026-12-31", result.get("validTo"));
+		    Collections.<String, Object> singletonMap("active", false));
+		assertEquals(false, result.get("active"));
 		verify(f.dao).lockEvent(f.event);
 		verify(f.dao).save(f.event);
 	}
 	
 	@Test
-	public void validToBeforeValidFromIsRejected() {
+	public void stateRequiresABoolean() {
 		SyntheticFixture f = new SyntheticFixture();
 		try {
-			f.service.updateEvent(f.event.getUuid(), Collections.<String, Object> singletonMap("validTo", "2019-12-31"));
+			f.service.updateEvent(f.event.getUuid(), Collections.<String, Object> singletonMap("active", "false"));
 			fail();
 		}
 		catch (SurveillanceException error) {
-			assertEquals("INVALID_EVENT", error.getCode());
+			assertEquals(422, error.getStatus());
 		}
+	}
+	
+	@Test
+	public void inactiveEventIsHiddenFromCatalogButRemainsEditable() {
+		SyntheticFixture f = new SyntheticFixture();
+		f.event.setActive(false);
+		assertTrue(((List<?>) f.service.getCatalog().get("events")).isEmpty());
+		assertTrue(f.service.getEvents(false).isEmpty());
+		assertEquals(1, f.service.getEvents(true).size());
+		f.service.updateEvent(f.event.getUuid(), Collections.<String, Object> singletonMap("active", true));
+		assertEquals(1, ((List<?>) f.service.getCatalog().get("events")).size());
+	}
+	
+	@Test
+	public void inactiveDiagnosisCannotCreateANewCase() {
+		SyntheticFixture f = new SyntheticFixture();
+		f.event.setActive(false);
+		try {
+			f.service.createDraft(f.surveillanceRequest);
+			fail("Inactive event must reject new cases");
+		}
+		catch (SurveillanceException error) {
+			assertEquals("EVENT_RETIRED", error.getCode());
+		}
+		verify(f.dao, never())
+		        .save(any(org.openmrs.module.sihsalusepidemiologicalsurveillance.model.SurveillanceCase.class));
 	}
 	
 	private Map<String, Object> body(SyntheticFixture f, String validFrom) {
@@ -145,7 +180,7 @@ public class NotifiableEventTest {
 		body.put("conceptUuid", f.event.getConcept().getUuid());
 		body.put("periodicity", "SEMANAL");
 		body.put("referenceRegulation", "NTS 228-MINSA/CDC-2025");
-		body.put("validFrom", validFrom);
+		body.put("active", true);
 		when(f.clinical.concept(f.event.getConcept().getUuid())).thenReturn(f.event.getConcept());
 		return body;
 	}

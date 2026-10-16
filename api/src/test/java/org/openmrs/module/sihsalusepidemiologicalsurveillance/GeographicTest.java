@@ -12,7 +12,7 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.api.model.*;
 import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.*;
 
 public class GeographicTest {
-
+	
 	private GeographicCalculator.Record record(int center, String date, String origin) {
 		GeographicCalculator.Record value = new GeographicCalculator.Record();
 		value.center = center;
@@ -20,7 +20,7 @@ public class GeographicTest {
 		value.origin = origin;
 		return value;
 	}
-
+	
 	@Test
 	public void classificationUsesCalendarYearsAndHistoryOutsideTheSelectedWindow() {
 		List<GeographicCalculator.Record> records = new ArrayList<GeographicCalculator.Record>();
@@ -43,7 +43,7 @@ public class GeographicTest {
 		assertEquals("ELIMINATED", report.foci.get(4).classification);
 		assertEquals("ELIMINATED", report.foci.get(5).classification);
 	}
-
+	
 	@Test
 	public void riskBoundariesAndAllNonLocalOrigins() {
 		int[] counts = { 1, 9, 10, 19, 20, 49, 50 };
@@ -68,12 +68,13 @@ public class GeographicTest {
 			}
 		}
 	}
-
+	
 	@Test
 	public void csvIsValidatedCompletelyBeforeAnyWritesAndPreservesCodes() {
 		String header = "address_hierarchy_entry_id,latitude,longitude\n";
 		assertTrue(GeographicCalculator.parseCsv("\uFEFF" + header + "00123,-90,180\r\n").containsKey("00123"));
-		for (String invalid : Arrays.asList("00123,NaN,1", "00123,91,1", "00123,1,181", "00123,,1", "00123,1,2\n00123,3,4")) {
+		for (String invalid : Arrays.asList("00123,NaN,1", "00123,91,1", "00123,1,181", "00123,,1",
+		    "00123,1,2\n00123,3,4")) {
 			try {
 				GeographicCalculator.parseCsv(header + invalid);
 				fail();
@@ -91,8 +92,8 @@ public class GeographicTest {
 		verify(f.dao, never()).saveCoordinates(anyInt(), anyDouble(), anyDouble());
 		verify(f.dao).saveCoordinateCode("00123", -3, -73);
 		verify(f.dao).saveCoordinateCode("99999", -4, -74);
-		when(f.dao.populatedCenterCodes()).thenReturn(
-		    Arrays.asList(new Object[] { 42, "00123" }, new Object[] { 43, "00123" }));
+		when(f.dao.populatedCenterCodes())
+		        .thenReturn(Arrays.asList(new Object[] { 42, "00123" }, new Object[] { 43, "00123" }));
 		assertEquals(Integer.valueOf(1), f.service.importCoordinates(header + "00123,-3,-73").get("pending"));
 		reset(f.dao);
 		try {
@@ -104,12 +105,13 @@ public class GeographicTest {
 		}
 		verify(f.dao, never()).saveCoordinateCode(anyString(), anyDouble(), anyDouble());
 	}
-
+	
 	@Test
 	public void serviceFiltersDiseaseStatusGeographyAndAttachesCoordinates() {
 		SyntheticFixture f = new SyntheticFixture();
 		f.encounterDiagnosis.setDiagnosis(new org.openmrs.CodedOrFreeText(f.diagnosis, null, null));
-		SurveillanceCase confirmed = new SurveillanceCase(), probable = new SurveillanceCase(), elsewhere = new SurveillanceCase();
+		SurveillanceCase confirmed = new SurveillanceCase(), probable = new SurveillanceCase(),
+		        elsewhere = new SurveillanceCase();
 		for (SurveillanceCase value : Arrays.asList(confirmed, probable, elsewhere)) {
 			value.setDiagnosis(f.encounterDiagnosis);
 			value.setDiagnosisType("CONFIRMADO");
@@ -125,18 +127,18 @@ public class GeographicTest {
 		when(f.dao.ancestorIdForPopulatedCenter(42, "STATE_PROVINCE")).thenReturn(2);
 		when(f.dao.ancestorIdForPopulatedCenter(43, "STATE_PROVINCE")).thenReturn(3);
 		when(f.dao.centerCoordinates()).thenReturn(Collections.singletonList(new Object[] { 42, -3.0, -73.0 }));
-		GeographicReport report = f.service
-		        .geography(f.event.getUuid(), "2026-01-01", "2026-01-31", "PROVINCIA", "province");
+		GeographicReport report = f.service.geography(f.event.getUuid(), "2026-01-01", "2026-01-31", "PROVINCIA",
+		    "province");
 		assertEquals(1, report.total);
 		assertEquals(0, report.unmappedCases);
 		assertEquals(-3.0, report.foci.get(0).latitude, 0);
-		assertEquals(1, f.service.geography(f.event.getUuid(), "2026-01-01", "2026-01-31",
-		    "PROVINCIA", "province", "PROBABLE").total);
-		assertEquals(2, f.service.geography(f.event.getUuid(), "2026-01-01", "2026-01-31",
-		    "PROVINCIA", "province", "TODOS").total);
+		assertEquals(1,
+		    f.service.geography(f.event.getUuid(), "2026-01-01", "2026-01-31", "PROVINCIA", "province", "PROBABLE").total);
+		assertEquals(2,
+		    f.service.geography(f.event.getUuid(), "2026-01-01", "2026-01-31", "PROVINCIA", "province", "TODOS").total);
 		probable.setDiagnosisType("DESCARTADO");
-		assertEquals(1, f.service.geography(f.event.getUuid(), "2026-01-01", "2026-01-31",
-		    "PROVINCIA", "province", "TODOS").total);
+		assertEquals(1,
+		    f.service.geography(f.event.getUuid(), "2026-01-01", "2026-01-31", "PROVINCIA", "province", "TODOS").total);
 		try {
 			f.service.geography(f.event.getUuid(), "2026-01-01", "2026-01-31", "PROVINCIA", "province", "DESCARTADO");
 			fail("Unsupported diagnosis filter accepted");
@@ -148,7 +150,7 @@ public class GeographicTest {
 		assertEquals(1,
 		    f.service.geography(f.event.getUuid(), "2026-01-01", "2026-01-31", "PROVINCIA", "province").unmappedCases);
 	}
-
+	
 	@Test
 	public void rejectsCrossYearRangesAndDeniedAccess() {
 		SyntheticFixture f = new SyntheticFixture();

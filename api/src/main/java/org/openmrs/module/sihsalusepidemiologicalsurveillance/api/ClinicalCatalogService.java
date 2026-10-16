@@ -53,8 +53,7 @@ public class ClinicalCatalogService {
 	}
 	
 	/**
-	 * Like {@link #icd10} but returns {@code null} when no unique ICD10 code is found (dynamic
-	 * events).
+	 * Like {@link #icd10} but returns {@code null} when no unique ICD10 code is found (dynamic events).
 	 */
 	public static String icd10OrNull(Concept concept, ClinicalCatalog m) {
 		Set<String> codes = new HashSet<String>();

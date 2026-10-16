@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog/1.9"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog/1.9 http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-1.9.xsd">
+ <changeSet id="surveillance-endemic-config-20261016" author="sihsalus">
+  <createTable tableName="surveillance_endemic_config">
+   <column name="id" type="int"><constraints primaryKey="true" nullable="false"/></column>
+   <column name="historical_years" type="int"><constraints nullable="false"/></column>
+   <column name="minimum_years" type="int"><constraints nullable="false"/></column>
+  </createTable>
+  <insert tableName="surveillance_endemic_config">
+   <column name="id" valueNumeric="1"/>
+   <column name="historical_years" valueNumeric="5"/>
+   <column name="minimum_years" valueNumeric="3"/>
+  </insert>
+ </changeSet>
+</databaseChangeLog>

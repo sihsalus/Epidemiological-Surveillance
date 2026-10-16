@@ -22,6 +22,8 @@ public class AggregateReportCalculator {
 		report.zoneLevel = zoneLevel;
 		report.diagnosisType = diagnosisType;
 		report.population = diagnosisType;
+		for (int year = from.getYear() - 1; year >= from.getYear() - metadata.historicalYears; year--)
+			report.historicalYears.add(year);
 		Map<LocalDate, Integer> daily = new TreeMap<>();
 		Map<LocalDate, Integer> periods = new TreeMap<>();
 		for (LocalDate date = from; !date.isAfter(to); date = date.plusDays(1))
@@ -53,8 +55,8 @@ public class AggregateReportCalculator {
 			point.cases = entry.getValue();
 			Map<Integer, Integer> years = new TreeMap<>();
 			for (PeriodCaseCount count : historicalCounts) {
-				if (!matches(count, eventUuid, period, zoneLevel, addressId, diagnosisType) || count.getYear() >= point.year
-				        || count.getYear() < point.year - metadata.historicalYears)
+				if (!matches(count, eventUuid, period, zoneLevel, addressId, diagnosisType)
+				        || !report.historicalYears.contains(count.getYear()))
 					continue;
 				int number = point.number;
 				if ("dia".equals(period)) {
@@ -65,6 +67,20 @@ public class AggregateReportCalculator {
 				// Sum zones and diagnosis types BEFORE calculating the historical distribution.
 				if (count.getPeriodNumber() == number)
 					years.merge(count.getYear(), count.getCaseCount(), Integer::sum);
+			}
+			// Comparison lines show recorded case totals, including zero when the sparse aggregate has no row.
+			// Keep the statistical sample separate: an absent row does not prove sufficient surveillance history.
+			for (Integer year : report.historicalYears) {
+				if ("dia".equals(period) && !MonthDay.from(date).isValidYear(year))
+					continue;
+				if ("semana".equals(period)) {
+					java.time.temporal.WeekFields weeks = java.time.temporal.WeekFields
+					        .of(DayOfWeek.valueOf(metadata.firstDayOfWeek), metadata.minimalDaysInFirstWeek);
+					LocalDate historical = LocalDate.of(year, 7, 1).with(weeks.weekOfWeekBasedYear(), point.number);
+					if (calendar.year(historical, period) != year || calendar.number(historical, period) != point.number)
+						continue;
+				}
+				point.historicalCases.put(year, years.getOrDefault(year, 0));
 			}
 			EndemicChannel.Thresholds thresholds = new EndemicChannel().evaluate(new ArrayList<>(years.values()),
 			    point.cases, metadata.minimumHistoricalYears);

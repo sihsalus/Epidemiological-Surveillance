@@ -10,9 +10,9 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.api.*;
 import org.openmrs.module.sihsalusepidemiologicalsurveillance.api.model.*;
 
 public class DemographicCalculatorTest {
-
+	
 	private final EpidemiologicalCalendar calendar = new EpidemiologicalCalendar(new ClinicalCatalog());
-
+	
 	@Test
 	public void groupsCoverEveryAgeAndBoundaryIncludingAnUnboundedLastGroup() {
 		List<AgeGroup> groups = DemographicCalculator.groups(null);
@@ -23,7 +23,7 @@ public class DemographicCalculatorTest {
 		assertEquals("UNKNOWN", DemographicCalculator.ageGroup(-1, groups));
 		assertEquals("0,2,12,18,30,60", DemographicCalculator.validateGroups(groups));
 	}
-
+	
 	@Test
 	public void configurationRejectsGapsOverlapsMissingGroupsAndAnUpperLimit() {
 		for (int scenario = 0; scenario < 6; scenario++) {
@@ -49,7 +49,7 @@ public class DemographicCalculatorTest {
 			}
 		}
 	}
-
+	
 	private DemographicCalculator.Record record(Integer age, String sex, String disease, Boolean pregnant, String date) {
 		DemographicCalculator.Record value = new DemographicCalculator.Record();
 		value.age = age;
@@ -60,7 +60,7 @@ public class DemographicCalculatorTest {
 		value.ethnicity = age == null ? null : "Synthetic ethnicity";
 		return value;
 	}
-
+	
 	@Test
 	public void everyCrossTabPreservesTotalsIncludingUnknownValues() {
 		List<DemographicCalculator.Record> records = Arrays.asList(record(10, "F", "a", true, "2026-01-01"),
@@ -84,7 +84,7 @@ public class DemographicCalculatorTest {
 					    result.values.get(i).stream().mapToInt(Integer::intValue).sum());
 			}
 	}
-
+	
 	@Test
 	public void periodsIncludeZeroBucketsAndRespectEpidemiologicalWeeks() {
 		for (String period : DemographicCalculator.PERIODS) {

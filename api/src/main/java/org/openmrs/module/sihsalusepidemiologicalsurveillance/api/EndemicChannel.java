@@ -28,8 +28,8 @@ public class EndemicChannel {
 		result.q1 = quantile(history, 0.25);
 		result.q2 = quantile(history, 0.5);
 		result.q3 = quantile(history, 0.75);
-		result.zone = current > result.q3 ? "EPIDEMIC" : current >= result.q2 ? "ALERT" : current >= result.q1 ? "SAFETY"
-		        : "SUCCESS";
+		result.zone = current > result.q3 ? "EPIDEMIC"
+		        : current >= result.q2 ? "ALERT" : current >= result.q1 ? "SAFETY" : "SUCCESS";
 		// An all-zero baseline with zero current cases is not an alert.
 		if (current == 0 && result.q3 == 0)
 			result.zone = "SUCCESS";

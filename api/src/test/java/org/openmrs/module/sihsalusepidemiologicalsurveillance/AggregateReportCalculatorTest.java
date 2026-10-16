@@ -69,6 +69,16 @@ public class AggregateReportCalculatorTest {
 		    metadata);
 		assertEquals(5, report.channel.get(0).sampleSize);
 		assertEquals(5d, report.channel.get(0).q3, 0d);
+		assertEquals(Arrays.asList(2025, 2024, 2023, 2022, 2021), report.historicalYears);
+		assertEquals(Integer.valueOf(5), report.channel.get(0).historicalCases.get(2024));
+		metadata.historicalYears = 2;
+		metadata.minimumHistoricalYears = 2;
+		SurveillanceReport shorter = calculator.calculate("synthetic-event", LocalDate.parse("2026-03-01"),
+		    LocalDate.parse("2026-03-01"), "dia", "CENTRO_POBLADO", null, "TODOS", Collections.emptyList(), history,
+		    metadata);
+		assertEquals(Arrays.asList(2025, 2024), shorter.historicalYears);
+		assertEquals(2, shorter.channel.get(0).sampleSize);
+		assertEquals(5d, shorter.channel.get(0).q3, 0d);
 	}
 	
 	@Test
@@ -89,11 +99,22 @@ public class AggregateReportCalculatorTest {
 	}
 	
 	@Test
-	public void missingHistoricalYearsAreNotInventedAsZero() {
+	public void emptyHistoricalPeriodsDisplayZeroWithoutIncreasingStatisticalSample() {
 		SurveillanceReport report = calculator.calculate("synthetic-event", LocalDate.parse("2026-03-01"),
 		    LocalDate.parse("2026-03-01"), "dia", "CENTRO_POBLADO", null, "CONFIRMADO", Collections.emptyList(),
 		    Collections.singletonList(count("2025-03-01", "dia", 100, "CENTRO_POBLADO", "CONFIRMADO", 0)), metadata);
 		assertEquals(1, report.channel.get(0).sampleSize);
+		assertEquals(Integer.valueOf(0), report.channel.get(0).historicalCases.get(2025));
+		assertEquals(Integer.valueOf(0), report.channel.get(0).historicalCases.get(2024));
 		assertTrue(report.warnings.contains("INSUFFICIENT_HISTORY"));
+	}
+	
+	@Test
+	public void nonExistentHistoricalCalendarPeriodsRemainAbsent() {
+		SurveillanceReport leapDay = calculator.calculate("synthetic-event", LocalDate.parse("2024-02-29"),
+		    LocalDate.parse("2024-02-29"), "dia", "CENTRO_POBLADO", null, "CONFIRMADO", Collections.emptyList(),
+		    Collections.emptyList(), metadata);
+		assertFalse(leapDay.channel.get(0).historicalCases.containsKey(2023));
+		assertEquals(Integer.valueOf(0), leapDay.channel.get(0).historicalCases.get(2020));
 	}
 }

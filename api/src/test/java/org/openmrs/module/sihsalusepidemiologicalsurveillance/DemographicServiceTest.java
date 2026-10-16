@@ -11,7 +11,7 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.api.model.*;
 import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.*;
 
 public class DemographicServiceTest {
-
+	
 	@Test
 	public void departmentAndProvinceFilterBothReportsWithoutDoubleCounting() {
 		for (String level : Arrays.asList("DEPARTAMENTO", "PROVINCIA")) {
@@ -46,16 +46,15 @@ public class DemographicServiceTest {
 			assertEquals(3, report.total);
 			assertEquals(level, report.zoneLevel);
 			assertEquals("selected", report.address);
-			assertEquals(
-			    6,
-			    f.service.report(f.event.getUuid(), "2026-01-01", "2026-01-31", "mes", "CENTRO_POBLADO", null, "TODOS").total);
+			assertEquals(6, f.service.report(f.event.getUuid(), "2026-01-01", "2026-01-31", "mes", "CENTRO_POBLADO", null,
+			    "TODOS").total);
 			assertEquals(2, f.service.demographics("2026-01-01", "2026-01-31", "sex", "ageGroup", "mes", f.event.getUuid(),
 			    null, "TODOS", "CENTRO_POBLADO", null).total);
 		}
 	}
-
+	
 	@Test
-	public void reportsAcceptMoreThanTwoYears() {
+	public void demographicsAcceptMultipleYearsButTemporalRequiresCurrentYear() {
 		SyntheticFixture f = new SyntheticFixture();
 		f.m.surveillanceStartDate = "2020-01-01";
 		when(f.dao.events()).thenReturn(Collections.singletonList(f.event));
@@ -64,10 +63,15 @@ public class DemographicServiceTest {
 		    f.event.getUuid(), null, "TODOS");
 		assertEquals(1123, demographic.rows.size());
 		assertEquals(1, demographic.total);
-		SurveillanceReport temporal = f.service.report(f.event.getUuid(), "2023-09-17", "2026-10-13", "dia");
-		assertEquals(1123, temporal.channel.size());
+		try {
+			f.service.report(f.event.getUuid(), "2023-09-17", "2026-10-13", "dia");
+			fail("Previous calendar years accepted");
+		}
+		catch (SurveillanceException expected) {
+			assertEquals("OUTSIDE_CURRENT_YEAR", expected.getCode());
+		}
 	}
-
+	
 	@Test
 	public void geographyFiltersCasesBeforeCountingUndatedRecords() {
 		SyntheticFixture f = new SyntheticFixture();
@@ -101,7 +105,7 @@ public class DemographicServiceTest {
 			assertEquals("INVALID_REPORT_ADDRESS", ex.getCode());
 		}
 	}
-
+	
 	@Test
 	public void periodLabelsUseConfiguredEpidemiologicalWeekAndRequestedPrecision() {
 		SyntheticFixture f = new SyntheticFixture();
@@ -113,9 +117,10 @@ public class DemographicServiceTest {
 		assertEquals("2026-2", DemographicCalculator.periodLabel(date, "semestre", calendar));
 		assertEquals("2026", DemographicCalculator.periodLabel(date, "anio", calendar));
 		assertEquals("2026-S01", DemographicCalculator.periodLabel(java.time.LocalDate.of(2026, 1, 4), "semana", calendar));
-		assertEquals("2025-S53", DemographicCalculator.periodLabel(java.time.LocalDate.of(2025, 12, 28), "semana", calendar));
+		assertEquals("2025-S53",
+		    DemographicCalculator.periodLabel(java.time.LocalDate.of(2025, 12, 28), "semana", calendar));
 	}
-
+	
 	@Test
 	public void comparisonsIncludeZeroDiseaseAndKnownEthnicityWithoutLeakingPatientNames() {
 		SyntheticFixture f = new SyntheticFixture();
@@ -138,7 +143,7 @@ public class DemographicServiceTest {
 		assertEquals(Arrays.asList(1, 0), report.rowTotals);
 		assertEquals("Synthetic ethnicity", report.columns.get(0).label);
 	}
-
+	
 	@Test
 	public void invalidConfigurationAndDeniedWritesDoNotPersist() {
 		SyntheticFixture f = new SyntheticFixture();
@@ -159,7 +164,7 @@ public class DemographicServiceTest {
 		}
 		verify(f.dao, never()).save(any(AgeGroupConfiguration.class));
 	}
-
+	
 	private SurveillanceCase record(SyntheticFixture f) {
 		f.encounterDiagnosis.setDiagnosis(new org.openmrs.CodedOrFreeText(f.diagnosis, null, null));
 		SurveillanceCase value = new SurveillanceCase();
@@ -172,11 +177,12 @@ public class DemographicServiceTest {
 		value.setDiagnosisType("CONFIRMADO");
 		return value;
 	}
-
+	
 	@Test
 	public void reportUsesCaseCopiesAndExcludesVoidedDiscardedAndOutOfRangeCases() {
 		SyntheticFixture f = new SyntheticFixture();
-		SurveillanceCase included = record(f), discarded = record(f), voided = record(f), old = record(f), undated = record(f);
+		SurveillanceCase included = record(f), discarded = record(f), voided = record(f), old = record(f),
+		        undated = record(f);
 		discarded.setDiagnosisType("DESCARTADO");
 		voided.setVoided(true);
 		old.setOnsetDate(java.sql.Date.valueOf("2025-12-31"));
@@ -193,13 +199,13 @@ public class DemographicServiceTest {
 		assertEquals(Integer.valueOf(1), result.columnTotals.get(2));
 		verify(f.access).require(SurveillanceConstants.REPORT);
 	}
-
+	
 	@Test
 	public void comparisonRejectsAnIndividualEventAndInvalidVariables() {
 		SyntheticFixture f = new SyntheticFixture();
 		try {
-			f.service.demographics("2026-01-01", "2026-01-31", "disease", "sex", "mes", f.event.getUuid(),
-			    f.event.getUuid(), "TODOS");
+			f.service.demographics("2026-01-01", "2026-01-31", "disease", "sex", "mes", f.event.getUuid(), f.event.getUuid(),
+			    "TODOS");
 			fail();
 		}
 		catch (SurveillanceException ex) {
@@ -213,7 +219,7 @@ public class DemographicServiceTest {
 			assertEquals("INVALID_DEMOGRAPHIC_DIMENSIONS", ex.getCode());
 		}
 	}
-
+	
 	@Test
 	public void savedConfigurationChangesClassificationWithoutChangingCases() {
 		SyntheticFixture f = new SyntheticFixture();
@@ -230,7 +236,7 @@ public class DemographicServiceTest {
 		assertEquals("CHILDREN", DemographicCalculator.ageGroup(12, f.service.getAgeGroups()));
 		verify(f.dao, never()).save(any(SurveillanceCase.class));
 	}
-
+	
 	@Test
 	public void deniedReportDoesNotReadCases() {
 		SyntheticFixture f = new SyntheticFixture();

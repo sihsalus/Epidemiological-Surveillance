@@ -7,10 +7,10 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.api.model.Geograph
 
 /** Pure geographic aggregation; history is independent of the displayed date window. */
 public class GeographicCalculator {
-
+	
 	public static final List<String> ORIGINS = Collections.unmodifiableList(Arrays.asList("AUTOCTONO", "IMPORTADO_NACIONAL",
 	    "IMPORTADO_INTERNACIONAL", "RECAIDA", "RECRUDESCENCIA", "INDUCIDO", "INTRODUCIDO", "UNKNOWN"));
-
+	
 	public static int[] thresholds(String value) {
 		try {
 			String[] parts = (value == null ? "10,20,50" : value).split(",", -1);
@@ -30,7 +30,7 @@ public class GeographicCalculator {
 			throw new SurveillanceException(422, "INVALID_RISK_LEVELS");
 		}
 	}
-
+	
 	public static Map<String, double[]> parseCsv(String csv) {
 		Map<String, double[]> result = new LinkedHashMap<String, double[]>();
 		if (csv == null)
@@ -61,16 +61,16 @@ public class GeographicCalculator {
 		}
 		return result;
 	}
-
+	
 	public static class Record {
-
+		
 		public int center;
-
+		
 		public LocalDate date;
-
+		
 		public String origin;
 	}
-
+	
 	public GeographicReport calculate(List<Record> records, LocalDate from, LocalDate to, int[] bounds) {
 		GeographicReport report = new GeographicReport();
 		report.referenceYear = from.getYear();

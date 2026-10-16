@@ -146,6 +146,7 @@ class SyntheticFixture {
 		encounterDiagnosis.setPatient(patient);
 		encounterDiagnosis.setEncounter(source);
 		encounterDiagnosis.setVoided(false);
+		encounterDiagnosis.setDiagnosis(new org.openmrs.CodedOrFreeText(diagnosis, null, null));
 		when(clinical.diagnosis(encounterDiagnosis.getUuid())).thenReturn(encounterDiagnosis);
 		when(clinical.concept(diagnosis.getUuid())).thenReturn(diagnosis);
 		when(clinical.encounterType(type.getUuid())).thenReturn(type);

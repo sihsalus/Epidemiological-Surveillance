@@ -13,24 +13,36 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/rest/v1/sihsalusepidemiologicalsurveillance")
 public class SurveillanceController {
 	
+	@RequestMapping(value = "/configuration/endemic-channel", method = RequestMethod.GET)
+	@ResponseBody
+	public int[] endemicSettings() {
+		return service().getEndemicSettings();
+	}
+	
+	@RequestMapping(value = "/configuration/endemic-channel", method = RequestMethod.PUT, consumes = MediaType.APPLICATION_JSON_VALUE)
+	@ResponseBody
+	public int[] saveEndemicSettings(@RequestBody List<Integer> values) {
+		return service().saveEndemicSettings(values);
+	}
+	
 	@RequestMapping(value = "/configuration/risk-levels", method = RequestMethod.GET)
 	@ResponseBody
 	public int[] riskThresholds() {
 		return service().getRiskThresholds();
 	}
-
+	
 	@RequestMapping(value = "/configuration/risk-levels", method = RequestMethod.PUT, consumes = MediaType.APPLICATION_JSON_VALUE)
 	@ResponseBody
 	public int[] saveRiskThresholds(@RequestBody List<Integer> bounds) {
 		return service().saveRiskThresholds(bounds);
 	}
-
+	
 	@RequestMapping(value = "/configuration/coordinates", method = RequestMethod.PUT, consumes = MediaType.APPLICATION_JSON_VALUE)
 	@ResponseBody
 	public Map<String, Integer> importCoordinates(@RequestBody Map<String, String> body) {
 		return service().importCoordinates(body.get("csv"));
 	}
-
+	
 	@RequestMapping(value = "/reports/geography", method = RequestMethod.GET)
 	@ResponseBody
 	public GeographicReport geography(@RequestParam("event") String event, @RequestParam("from") String from,
@@ -40,19 +52,19 @@ public class SurveillanceController {
 	        @RequestParam(value = "diagnosisType", defaultValue = "CONFIRMADO") String diagnosisType) {
 		return service().geography(event, from, to, zoneLevel, address, diagnosisType);
 	}
-
+	
 	@RequestMapping(value = "/configuration/age-groups", method = RequestMethod.GET)
 	@ResponseBody
 	public List<AgeGroup> ageGroups() {
 		return service().getAgeGroups();
 	}
-
+	
 	@RequestMapping(value = "/configuration/age-groups", method = RequestMethod.PUT, consumes = MediaType.APPLICATION_JSON_VALUE)
 	@ResponseBody
 	public List<AgeGroup> saveAgeGroups(@RequestBody List<AgeGroup> groups) {
 		return service().saveAgeGroups(groups);
 	}
-
+	
 	@RequestMapping(value = "/reports/demographics", method = RequestMethod.GET)
 	@ResponseBody
 	public DemographicReport demographics(@RequestParam("from") String from, @RequestParam("to") String to,
@@ -63,10 +75,10 @@ public class SurveillanceController {
 	        @RequestParam(value = "diagnosisType", defaultValue = "CONFIRMADO") String diagnosisType,
 	        @RequestParam(value = "zoneLevel", defaultValue = "CENTRO_POBLADO") String zoneLevel,
 	        @RequestParam(value = "address", required = false) String address) {
-		return service()
-		        .demographics(from, to, row, column, period, event, compareEvents, diagnosisType, zoneLevel, address);
+		return service().demographics(from, to, row, column, period, event, compareEvents, diagnosisType, zoneLevel,
+		    address);
 	}
-
+	
 	private SurveillanceService service;
 	
 	public void setService(SurveillanceService value) {
@@ -91,7 +103,8 @@ public class SurveillanceController {
 	
 	@RequestMapping(value = "/events", method = RequestMethod.GET)
 	@ResponseBody
-	public Map<String, Object> events(@RequestParam(value = "includeRetired", defaultValue = "false") boolean includeRetired) {
+	public Map<String, Object> events(
+	        @RequestParam(value = "includeRetired", defaultValue = "false") boolean includeRetired) {
 		return Collections.<String, Object> singletonMap("results", service().getEvents(includeRetired));
 	}
 	
@@ -101,7 +114,8 @@ public class SurveillanceController {
 		return service().getEvent(uuid);
 	}
 	
-	@RequestMapping(value = { "/events/{uuid}", "/events/{uuid}/valid-to" }, method = RequestMethod.PUT, consumes = MediaType.APPLICATION_JSON_VALUE)
+	@RequestMapping(value = { "/events/{uuid}",
+	        "/events/{uuid}/valid-to" }, method = RequestMethod.PUT, consumes = MediaType.APPLICATION_JSON_VALUE)
 	@ResponseBody
 	public Map<String, Object> updateEvent(@PathVariable("uuid") String uuid, @RequestBody Map<String, Object> body) {
 		return service().updateEvent(uuid, body);
@@ -128,7 +142,8 @@ public class SurveillanceController {
 	
 	@RequestMapping(value = "/cases/{uuid}", method = RequestMethod.PUT, consumes = MediaType.APPLICATION_JSON_VALUE)
 	@ResponseBody
-	public SurveillanceCaseResponse updateDraft(@PathVariable("uuid") String uuid, @RequestBody SurveillanceCaseRequest body) {
+	public SurveillanceCaseResponse updateDraft(@PathVariable("uuid") String uuid,
+	        @RequestBody SurveillanceCaseRequest body) {
 		return service().updateDraft(uuid, body);
 	}
 	
@@ -195,7 +210,7 @@ public class SurveillanceController {
 	@ExceptionHandler(Exception.class)
 	@ResponseBody
 	public ResponseEntity<Map<String, Object>> unexpected(Exception error) {
-		return new ResponseEntity<Map<String, Object>>(Collections.<String, Object> singletonMap("code",
-		    "SERVICE_UNAVAILABLE"), HttpStatus.INTERNAL_SERVER_ERROR);
+		return new ResponseEntity<Map<String, Object>>(
+		        Collections.<String, Object> singletonMap("code", "SERVICE_UNAVAILABLE"), HttpStatus.INTERNAL_SERVER_ERROR);
 	}
 }

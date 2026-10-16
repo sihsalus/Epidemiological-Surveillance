@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog/1.9"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog/1.9 http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-1.9.xsd">
+ <changeSet id="surveillance-event-state-20261016" author="sihsalus">
+  <!-- Existing duplicate diseases must be reconciled without deleting historical references. -->
+  <preConditions onFail="HALT">
+   <sqlCheck expectedResult="0">select count(*) from (select concept_id from notifiable_event group by concept_id having count(*) &gt; 1) duplicates</sqlCheck>
+  </preConditions>
+  <addColumn tableName="notifiable_event"><column name="active" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column></addColumn>
+  <sql>update notifiable_event set active = case when valid_from &lt;= CURRENT_DATE and (valid_to is null or valid_to &gt;= CURRENT_DATE) then true else false end</sql>
+  <addUniqueConstraint tableName="notifiable_event" columnNames="concept_id" constraintName="ne_concept_uq"/>
+ </changeSet>
+</databaseChangeLog>
