@@ -33,4 +33,8 @@
     <include file="liquibase-case-laboratory.xml"/>
     <include file="liquibase-case-snapshot.xml"/>
     <include file="liquibase-age-groups.xml"/>
+    <include file="liquibase-geography.xml"/>
+    <include file="liquibase-coordinate-codes.xml"/>
+    <include file="liquibase-endemic-config.xml"/>
+    <include file="liquibase-event-state.xml"/>
 </databaseChangeLog>

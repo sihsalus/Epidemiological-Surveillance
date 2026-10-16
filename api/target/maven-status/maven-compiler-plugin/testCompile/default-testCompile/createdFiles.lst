@@ -1,3 +1,3 @@
+org\openmrs\module\sihsalusepidemiologicalsurveillance\LiquibaseMigrationTest.class
 org\openmrs\module\sihsalusepidemiologicalsurveillance\EpidemiologicalCalendarTest.class
 org\openmrs\module\sihsalusepidemiologicalsurveillance\RecoverEmptySurveillanceSchemaTest.class
-org\openmrs\module\sihsalusepidemiologicalsurveillance\NotifiableEventTest.class
