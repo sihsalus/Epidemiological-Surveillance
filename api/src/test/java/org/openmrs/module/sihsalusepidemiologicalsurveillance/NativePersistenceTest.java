@@ -159,13 +159,23 @@ public class NativePersistenceTest extends BaseModuleContextSensitiveTest {
 	public void readsInfectionHierarchyWithDistinctSqlColumnAliases() {
 		org.openmrs.api.db.hibernate.DbSession session = sessionFactory.getCurrentSession();
 		session.createSQLQuery(
-		    "create table if not exists address_hierarchy_entry (address_hierarchy_entry_id int primary key, parent_id int, name varchar(255))")
+		    "create table if not exists address_hierarchy_entry (address_hierarchy_entry_id int primary key, parent_id int, name varchar(255), level_id int)")
 		        .executeUpdate();
 		session.createSQLQuery(
-		    "insert into address_hierarchy_entry (address_hierarchy_entry_id,parent_id,name) values (9001,null,'Provincia de prueba'),(9002,9001,'Distrito de prueba'),(9003,9002,'Centro de prueba')")
+		    "insert into address_hierarchy_entry (address_hierarchy_entry_id,parent_id,name,level_id) values (9000,null,'Departamento de prueba',1),(9001,9000,'Provincia de prueba',2),(9002,9001,'Distrito de prueba',3),(9003,9002,'Centro de prueba',4)")
 		        .executeUpdate();
-		assertEquals("Provincia de prueba → Distrito de prueba → Centro de prueba", dao.addressDisplay(9003));
+		assertEquals("Departamento de prueba → Provincia de prueba → Distrito de prueba → Centro de prueba",
+		    dao.addressDisplay(9003));
 		assertNull(dao.addressDisplay(9999));
+		session.createSQLQuery(
+		    "create table if not exists address_hierarchy_level (address_hierarchy_level_id int primary key, address_field varchar(255))")
+		        .executeUpdate();
+		session.createSQLQuery(
+		    "insert into address_hierarchy_level values (1,'ADDRESS_1'),(2,'STATE_PROVINCE'),(3,'COUNTY_DISTRICT'),(4,'CITY_VILLAGE')")
+		        .executeUpdate();
+		assertEquals(Integer.valueOf(9000), dao.ancestorIdForPopulatedCenter(9003, "ADDRESS_1"));
+		assertEquals(Integer.valueOf(9001), dao.ancestorIdForPopulatedCenter(9003, "STATE_PROVINCE"));
+		assertNull(dao.ancestorIdForPopulatedCenter(9999, "ADDRESS_1"));
 	}
 	
 	@Test

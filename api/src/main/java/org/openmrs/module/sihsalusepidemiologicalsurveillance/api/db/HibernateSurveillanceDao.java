@@ -204,12 +204,31 @@ public class HibernateSurveillanceDao implements SurveillanceDao {
 		Object[] row = (Object[]) sessionFactory
 		        .getCurrentSession()
 		        .createSQLQuery(
-		            "select p.name as province_name, d.name as district_name, c.name as populated_center_name from address_hierarchy_entry c left join address_hierarchy_entry d on d.address_hierarchy_entry_id = c.parent_id left join address_hierarchy_entry p on p.address_hierarchy_entry_id = d.parent_id where c.address_hierarchy_entry_id = :id")
+		            "select dep.name as department_name, p.name as province_name, d.name as district_name, c.name as populated_center_name from address_hierarchy_entry c left join address_hierarchy_entry d on d.address_hierarchy_entry_id = c.parent_id left join address_hierarchy_entry p on p.address_hierarchy_entry_id = d.parent_id left join address_hierarchy_entry dep on dep.address_hierarchy_entry_id = p.parent_id where c.address_hierarchy_entry_id = :id")
 		        .setInteger("id", id).uniqueResult();
 		if (row == null)
 			return null;
 		return (row[0] == null ? "—" : row[0]) + " → " + (row[1] == null ? "—" : row[1]) + " → "
-		        + (row[2] == null ? "—" : row[2]);
+		        + (row[2] == null ? "—" : row[2]) + " → " + (row[3] == null ? "—" : row[3]);
+	}
+
+	@Override
+	public Integer ancestorIdForPopulatedCenter(Integer populatedCenterId, String field) {
+		Integer current = populatedCenterId;
+		java.util.Set<Integer> visited = new java.util.HashSet<Integer>();
+		while (current != null && visited.add(current)) {
+			Object[] row = (Object[]) sessionFactory
+			        .getCurrentSession()
+			        .createSQLQuery(
+			            "select e.parent_id, l.address_field from address_hierarchy_entry e join address_hierarchy_level l on l.address_hierarchy_level_id = e.level_id where e.address_hierarchy_entry_id = :id")
+			        .setInteger("id", current).uniqueResult();
+			if (row == null)
+				return null;
+			if (field.equals(row[1]))
+				return current;
+			current = row[0] == null ? null : ((Number) row[0]).intValue();
+		}
+		return null;
 	}
 	
 	@Override

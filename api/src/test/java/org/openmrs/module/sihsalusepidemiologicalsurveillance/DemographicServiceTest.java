@@ -13,6 +13,48 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.*;
 public class DemographicServiceTest {
 
 	@Test
+	public void departmentAndProvinceFilterBothReportsWithoutDoubleCounting() {
+		for (String level : Arrays.asList("DEPARTAMENTO", "PROVINCIA")) {
+			SyntheticFixture f = new SyntheticFixture();
+			String field = "DEPARTAMENTO".equals(level) ? "ADDRESS_1" : "STATE_PROVINCE";
+			when(f.dao.addressId("selected", field)).thenReturn(5);
+			when(f.dao.ancestorIdForPopulatedCenter(10, field)).thenReturn(5);
+			when(f.dao.ancestorIdForPopulatedCenter(20, field)).thenReturn(6);
+			SurveillanceCase first = record(f), second = record(f);
+			first.setInfectionAddress(10);
+			second.setInfectionAddress(20);
+			when(f.dao.events()).thenReturn(Collections.singletonList(f.event));
+			when(f.dao.surveillanceCases()).thenReturn(Arrays.asList(first, second));
+			DemographicReport demographic = f.service.demographics("2026-01-01", "2026-01-31", "sex", "ageGroup", "mes",
+			    f.event.getUuid(), null, "TODOS", level, "selected");
+			assertEquals(1, demographic.total);
+			List<PeriodCaseCount> daily = new ArrayList<PeriodCaseCount>();
+			for (int center : Arrays.asList(10, 20)) {
+				PeriodCaseCount count = new PeriodCaseCount();
+				count.setEvent(f.event);
+				count.setAddressHierarchyEntryId(center);
+				count.setZoneLevel("CENTRO_POBLADO");
+				count.setPeriodType("DIA");
+				count.setDiagnosisType("CONFIRMADO");
+				count.setStartDate(java.sql.Date.valueOf("2026-01-15"));
+				count.setCaseCount(3);
+				daily.add(count);
+			}
+			when(f.dao.counts(f.event, "dia", 2026, 2026, "CENTRO_POBLADO", null)).thenReturn(daily);
+			SurveillanceReport report = f.service.report(f.event.getUuid(), "2026-01-01", "2026-01-31", "mes", level,
+			    "selected", "TODOS");
+			assertEquals(3, report.total);
+			assertEquals(level, report.zoneLevel);
+			assertEquals("selected", report.address);
+			assertEquals(
+			    6,
+			    f.service.report(f.event.getUuid(), "2026-01-01", "2026-01-31", "mes", "CENTRO_POBLADO", null, "TODOS").total);
+			assertEquals(2, f.service.demographics("2026-01-01", "2026-01-31", "sex", "ageGroup", "mes", f.event.getUuid(),
+			    null, "TODOS", "CENTRO_POBLADO", null).total);
+		}
+	}
+
+	@Test
 	public void reportsAcceptMoreThanTwoYears() {
 		SyntheticFixture f = new SyntheticFixture();
 		f.m.surveillanceStartDate = "2020-01-01";

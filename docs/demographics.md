@@ -16,10 +16,16 @@ etiquetas; no expone nombres, identificadores de pacientes o casos.
 - `period`: `dia`, `semana`, `mes`, `trimestre`, `semestre`, `anio`; por defecto mes.
   El frontend solo lo envía cuando uno de los ejes es periodo.
 - `diagnosisType`: `CONFIRMADO` (predeterminado), `PROBABLE`, `TODOS`.
-- `zoneLevel`: `CENTRO_POBLADO` (predeterminado) o `DISTRITO`; `address` es
+- `zoneLevel`: `DEPARTAMENTO`, `PROVINCIA`, `DISTRITO` o `CENTRO_POBLADO` (predeterminado); `address` es
   opcional y debe ser un UUID de Address Hierarchy del nivel elegido. Filtra el
   lugar probable de infección del caso, también antes de contar casos sin fecha.
   Sin dirección se incluyen todas las zonas. La respuesta devuelve ambos filtros.
+  La interfaz no muestra un selector de nivel: utiliza el nivel más específico
+  seleccionado en Departamento → Provincia → Distrito → Centro poblado.
+  Departamento corresponde a `ADDRESS_1`. Sin seleccionar un hijo, el reporte
+  incluye todos los descendientes del padre seleccionado. El reporte temporal
+  aplica el mismo filtro a los conteos actuales e históricos de centros poblados
+  antes de sumar, sin sumar también los agregados de distrito.
 - `GET /configuration/age-groups`: privilegio de acceso al módulo.
 - `PUT /configuration/age-groups`: privilegio `Vigilancia Epidemiologica: Configurar`.
   Cuerpo: arreglo de seis objetos `{key, minAge, maxAge}` en orden; último máximo nulo.

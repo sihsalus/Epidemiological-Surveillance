@@ -94,7 +94,7 @@ enumeraciones, fechas, residencia o centro poblado inválidos. Las respuestas 42
 | Parámetro opcional | Valores | Predeterminado |
 |---|---|---|
 | `period` | `dia`, `semana`, `mes`, `trimestre`, `semestre` | `semana` |
-| `zoneLevel` | `DISTRITO`, `CENTRO_POBLADO` | `CENTRO_POBLADO` |
+| `zoneLevel` | `DEPARTAMENTO`, `PROVINCIA`, `DISTRITO`, `CENTRO_POBLADO` | `CENTRO_POBLADO` |
 | `address` | UUID de Address Hierarchy del nivel seleccionado | Todas las zonas de ese nivel |
 | `diagnosisType` | `CONFIRMADO`, `PROBABLE`, `TODOS` | `CONFIRMADO` |
 
@@ -124,7 +124,8 @@ Se conserva el UUID y la auditoría de creación, y se registra quién y cuándo
 
 | Operación | Ruta | Resultado |
 |---|---|---|
-| Provincias | `GET /addresses/provinces` | entradas de Address Hierarchy |
+| Departamentos | `GET /addresses/departments` | entradas `ADDRESS_1` de Address Hierarchy |
+| Provincias | `GET /addresses/provinces?parent={uuid}` | hijos del departamento |
 | Distritos | `GET /addresses/districts?parent={uuid}` | hijos de la provincia |
 | Centros poblados | `GET /addresses/populated-centers?parent={uuid}` | hijos del distrito |
 

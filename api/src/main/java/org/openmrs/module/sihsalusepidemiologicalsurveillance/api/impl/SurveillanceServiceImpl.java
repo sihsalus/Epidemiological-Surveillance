@@ -50,11 +50,11 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 	public DemographicReport demographics(String from, String to, String row, String column, String period,
 	        String eventUuid, String compareEvents, String diagnosisType, String zoneLevel, String address) {
 		access.require(SurveillanceConstants.REPORT);
-		if (!Arrays.asList("DISTRITO", "CENTRO_POBLADO").contains(zoneLevel))
+		if (!Arrays.asList("DEPARTAMENTO", "PROVINCIA", "DISTRITO", "CENTRO_POBLADO").contains(zoneLevel))
 			throw new SurveillanceException(422, "INVALID_ZONE_LEVEL");
 		Integer addressId = null;
 		if (ClinicalCatalogService.present(address)) {
-			addressId = dao.addressId(address, "DISTRITO".equals(zoneLevel) ? "COUNTY_DISTRICT" : "CITY_VILLAGE");
+			addressId = dao.addressId(address, reportAddressField(zoneLevel));
 			if (addressId == null)
 				throw new SurveillanceException(422, "INVALID_REPORT_ADDRESS");
 		}
@@ -119,9 +119,10 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 				Integer location = value.getInfectionAddress();
 				if (location == null)
 					continue;
-				if ("DISTRITO".equals(zoneLevel)) {
+				if (!"CENTRO_POBLADO".equals(zoneLevel)) {
 					if (!districts.containsKey(location))
-						districts.put(location, dao.districtIdForPopulatedCenter(location));
+						districts.put(location, "DISTRITO".equals(zoneLevel) ? dao.districtIdForPopulatedCenter(location)
+						        : dao.ancestorIdForPopulatedCenter(location, reportAddressField(zoneLevel)));
 					location = districts.get(location);
 				}
 				if (!addressId.equals(location))
@@ -386,8 +387,8 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 	@Override
 	public List<Map<String, Object>> addressChildren(String level, String parentUuid) {
 		access.require(SurveillanceConstants.VIEW);
-		String field = "provinces".equals(level) ? "STATE_PROVINCE" : "districts".equals(level) ? "COUNTY_DISTRICT"
-		        : "populated-centers".equals(level) ? "CITY_VILLAGE" : null;
+		String field = "departments".equals(level) ? "ADDRESS_1" : "provinces".equals(level) ? "STATE_PROVINCE"
+		        : "districts".equals(level) ? "COUNTY_DISTRICT" : "populated-centers".equals(level) ? "CITY_VILLAGE" : null;
 		if (field == null)
 			throw new SurveillanceException(422, "INVALID_ADDRESS_LEVEL");
 		List<Map<String, Object>> result = new ArrayList<Map<String, Object>>();
@@ -513,8 +514,8 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		}
 		PersonAddress address = patient.getPersonAddress();
 		if (address != null && !address.getVoided())
-			value.setPatientResidence(joinNonBlank(" → ", address.getStateProvince(), address.getCountyDistrict(),
-			    address.getCityVillage(), address.getAddress1(), address.getAddress2()));
+			value.setPatientResidence(joinNonBlank(" → ", address.getAddress1(), address.getStateProvince(),
+			    address.getCountyDistrict(), address.getCityVillage(), address.getAddress2()));
 	}
 
 	private String joinNonBlank(String separator, String... values) {
@@ -797,14 +798,14 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 	public SurveillanceReport report(String eventUuid, String from, String to, String period, String zoneLevel,
 	        String address, String diagnosisType) {
 		access.require(SurveillanceConstants.REPORT);
-		if (!Arrays.asList("DISTRITO", "CENTRO_POBLADO").contains(zoneLevel))
+		if (!Arrays.asList("DEPARTAMENTO", "PROVINCIA", "DISTRITO", "CENTRO_POBLADO").contains(zoneLevel))
 			throw new SurveillanceException(422, "INVALID_ZONE_LEVEL");
 		if (!Arrays.asList("CONFIRMADO", "PROBABLE", "TODOS").contains(diagnosisType))
 			throw new SurveillanceException(422, "INVALID_DIAGNOSIS_TYPE");
 		period = period == null ? "semana" : period.toLowerCase(Locale.ENGLISH);
 		Integer addressId = null;
 		if (address != null && !address.trim().isEmpty()) {
-			addressId = dao.addressId(address, "DISTRITO".equals(zoneLevel) ? "COUNTY_DISTRICT" : "CITY_VILLAGE");
+			addressId = dao.addressId(address, reportAddressField(zoneLevel));
 			if (addressId == null)
 				throw new SurveillanceException(422, "INVALID_REPORT_ADDRESS");
 		}
@@ -826,15 +827,44 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 			throw new SurveillanceException(422, "INVALID_DATE_RANGE");
 		if (start.isBefore(LocalDate.parse(m.surveillanceStartDate)))
 			throw new SurveillanceException(422, "OUTSIDE_COVERAGE");
-		List<PeriodCaseCount> daily = dao.counts(event, "dia", start.getYear(), end.getYear(), zoneLevel, addressId);
+		boolean ancestor = "DEPARTAMENTO".equals(zoneLevel) || "PROVINCIA".equals(zoneLevel);
+		String countLevel = ancestor ? "CENTRO_POBLADO" : zoneLevel;
+		Integer countAddress = ancestor ? null : addressId;
+		List<PeriodCaseCount> daily = dao.counts(event, "dia", start.getYear(), end.getYear(), countLevel, countAddress);
 		List<PeriodCaseCount> counts = dao.counts(event, period, calendar.year(start, period) - m.historicalYears,
-		    calendar.year(end, period) - 1, zoneLevel, addressId);
-		SurveillanceReport report = new AggregateReportCalculator().calculate(eventUuid, start, end, period, zoneLevel,
-		    addressId, diagnosisType, daily, counts, m);
+		    calendar.year(end, period) - 1, countLevel, countAddress);
+		if (ancestor && addressId != null) {
+			Map<Integer, Integer> ancestors = new HashMap<Integer, Integer>();
+			daily = filterCountsByAncestor(daily, zoneLevel, addressId, ancestors);
+			counts = filterCountsByAncestor(counts, zoneLevel, addressId, ancestors);
+		}
+		SurveillanceReport report = new AggregateReportCalculator().calculate(eventUuid, start, end, period, countLevel,
+		    countAddress, diagnosisType, daily, counts, m);
+		report.zoneLevel = zoneLevel;
 		report.address = addressId == null ? null : address;
 		return report;
 	}
 	
+	private static String reportAddressField(String level) {
+		return "DEPARTAMENTO".equals(level) ? "ADDRESS_1" : "PROVINCIA".equals(level) ? "STATE_PROVINCE" : "DISTRITO"
+		        .equals(level) ? "COUNTY_DISTRICT" : "CITY_VILLAGE";
+	}
+
+	private List<PeriodCaseCount> filterCountsByAncestor(List<PeriodCaseCount> counts, String level, Integer selected,
+	        Map<Integer, Integer> ancestors) {
+		List<PeriodCaseCount> result = new ArrayList<PeriodCaseCount>();
+		for (PeriodCaseCount count : counts) {
+			Integer center = count.getAddressHierarchyEntryId();
+			if (center == null)
+				continue;
+			if (!ancestors.containsKey(center))
+				ancestors.put(center, dao.ancestorIdForPopulatedCenter(center, reportAddressField(level)));
+			if (selected.equals(ancestors.get(center)))
+				result.add(count);
+		}
+		return result;
+	}
+
 	@Override
 	public void refreshCounts() {
 		User actor = access.require(SurveillanceConstants.MANAGE);

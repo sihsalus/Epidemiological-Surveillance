@@ -41,6 +41,8 @@ public interface SurveillanceDao {
 	
 	Integer districtIdForPopulatedCenter(Integer populatedCenterId);
 	
+	Integer ancestorIdForPopulatedCenter(Integer populatedCenterId, String field);
+
 	List<SurveillanceCase> surveillanceCases();
 	
 	SurveillanceCase caseByDiagnosis(org.openmrs.Diagnosis diagnosis);

@@ -104,7 +104,7 @@ public class SurveillanceServiceTest {
 	@Test
 	public void reportRejectsUnsupportedGeographyAndDiscardedFilter() {
 		SyntheticFixture f = new SyntheticFixture();
-		for (String[] selection : Arrays.asList(new String[] { "PROVINCIA", "TODOS", "INVALID_ZONE_LEVEL" }, new String[] {
+		for (String[] selection : Arrays.asList(new String[] { "INVALID", "TODOS", "INVALID_ZONE_LEVEL" }, new String[] {
 		        "DISTRITO", "DESCARTADO", "INVALID_DIAGNOSIS_TYPE" })) {
 			try {
 				f.service.report(f.event.getUuid(), "2026-01-01", "2026-01-03", "dia", selection[0], null, selection[1]);
