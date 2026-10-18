@@ -31,11 +31,15 @@ public class SurveillanceControllerTest {
 		mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
 		        .get(base + "/reports/geography?event=e&from=2026-01-01&to=2026-02-01&zoneLevel=DISTRITO&address=d"))
 		        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk());
-		verify(service).geography("e", "2026-01-01", "2026-02-01", "DISTRITO", "d", "CONFIRMADO");
+		verify(service).geography("e", "2026-01-01", "2026-02-01", "DISTRITO", "d", "CONFIRMADO", "origin", "mes");
 		mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
 		        .get(base + "/reports/geography?event=e&from=2026-01-01&to=2026-02-01&diagnosisType=TODOS"))
 		        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk());
-		verify(service).geography("e", "2026-01-01", "2026-02-01", "DEPARTAMENTO", null, "TODOS");
+		verify(service).geography("e", "2026-01-01", "2026-02-01", "DEPARTAMENTO", null, "TODOS", "origin", "mes");
+		mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+		        .get(base + "/reports/geography?event=e&from=2026-01-01&to=2026-02-01&column=period&period=semana"))
+		        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk());
+		verify(service).geography("e", "2026-01-01", "2026-02-01", "DEPARTAMENTO", null, "CONFIRMADO", "period", "semana");
 		mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
 		        .put(base + "/configuration/risk-levels").contentType("application/json").content("[10,20,50]"))
 		        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk());

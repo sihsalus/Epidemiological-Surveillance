@@ -49,8 +49,10 @@ public class SurveillanceController {
 	        @RequestParam("to") String to,
 	        @RequestParam(value = "zoneLevel", defaultValue = "DEPARTAMENTO") String zoneLevel,
 	        @RequestParam(value = "address", required = false) String address,
-	        @RequestParam(value = "diagnosisType", defaultValue = "CONFIRMADO") String diagnosisType) {
-		return service().geography(event, from, to, zoneLevel, address, diagnosisType);
+	        @RequestParam(value = "diagnosisType", defaultValue = "CONFIRMADO") String diagnosisType,
+	        @RequestParam(value = "column", defaultValue = "origin") String column,
+	        @RequestParam(value = "period", defaultValue = "mes") String period) {
+		return service().geography(event, from, to, zoneLevel, address, diagnosisType, column, period);
 	}
 	
 	@RequestMapping(value = "/configuration/age-groups", method = RequestMethod.GET)

@@ -84,7 +84,16 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 	@Override
 	public GeographicReport geography(String eventUuid, String from, String to, String zoneLevel, String address,
 	        String diagnosisType) {
+		return geography(eventUuid, from, to, zoneLevel, address, diagnosisType, "origin", "mes");
+	}
+
+	@Override
+	public GeographicReport geography(String eventUuid, String from, String to, String zoneLevel, String address,
+	        String diagnosisType, String column, String period) {
 		access.require(SurveillanceConstants.REPORT);
+		if ((!DemographicCalculator.DIMENSIONS.contains(column) && !"origin".equals(column)) || "disease".equals(column)
+		        || !DemographicCalculator.PERIODS.contains(period))
+			throw new SurveillanceException(422, "INVALID_DEMOGRAPHIC_DIMENSIONS");
 		if (!Arrays.asList("CONFIRMADO", "PROBABLE", "TODOS").contains(diagnosisType))
 			throw new SurveillanceException(422, "INVALID_DIAGNOSIS_TYPE");
 		EpidemiologicalCalendar calendar = new EpidemiologicalCalendar(catalog.get());
@@ -118,6 +127,8 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		if (!found)
 			throw new SurveillanceException(422, "INVALID_EVENT");
 		List<GeographicCalculator.Record> records = new ArrayList<GeographicCalculator.Record>();
+		List<DemographicCalculator.Record> tableRecords = new ArrayList<>();
+		Map<String, String> ethnicities = new HashMap<>();
 		Map<Integer, Integer> ancestors = new HashMap<Integer, Integer>();
 		for (SurveillanceCase value : dao.surveillanceCases()) {
 			if (value.isVoided() || !Arrays.asList("CONFIRMADO", "PROBABLE").contains(value.getDiagnosisType())
@@ -141,9 +152,27 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 			record.date = calendar.local(value.getOnsetDate());
 			record.origin = value.getOrigin();
 			records.add(record);
+			if (!record.date.isBefore(start) && !record.date.isAfter(end)) {
+				DemographicCalculator.Record cell = new DemographicCalculator.Record();
+				cell.center = center.toString();
+				cell.origin = record.origin;
+				cell.date = record.date;
+				cell.age = value.getPatientAge();
+				cell.sex = value.getPatientSex();
+				cell.pregnant = value.getPregnant();
+				if ("ethnicity".equals(column)) {
+					String patient = value.getPatient() == null ? "" : value.getPatient().getUuid();
+					if (!ethnicities.containsKey(patient))
+						ethnicities.put(patient, demographicEthnicity(value.getPatient(), catalog.get()));
+					cell.ethnicity = ethnicities.get(patient);
+				}
+				tableRecords.add(cell);
+			}
 		}
 		GeographicReport report = new GeographicCalculator().calculate(records, start, end,
 		    GeographicCalculator.thresholds(dao.riskThresholds()));
+		report.table = new DemographicCalculator().geography(tableRecords, column, period, start, end, configuredAgeGroups(),
+		    calendar);
 		Map<Integer, Object[]> coordinates = new HashMap<Integer, Object[]>();
 		for (Object[] row : dao.centerCoordinates())
 			coordinates.put(((Number) row[0]).intValue(), row);

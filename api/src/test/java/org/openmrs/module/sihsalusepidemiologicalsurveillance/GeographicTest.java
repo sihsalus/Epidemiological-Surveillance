@@ -13,6 +13,52 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.*;
 
 public class GeographicTest {
 	
+	@Test
+	public void geographicColumnsReuseDemographicDomainsAndPreserveTotals() {
+		DemographicCalculator.Record a = new DemographicCalculator.Record();
+		a.center = "42";
+		a.age = 12;
+		a.sex = "F";
+		a.pregnant = false;
+		a.ethnicity = "Synthetic ethnicity";
+		a.origin = "AUTOCTONO";
+		a.date = LocalDate.of(2026, 1, 1);
+		DemographicCalculator.Record b = new DemographicCalculator.Record();
+		b.center = "43";
+		b.date = LocalDate.of(2026, 1, 2);
+		DemographicCalculator calculator = new DemographicCalculator();
+		EpidemiologicalCalendar calendar = new EpidemiologicalCalendar(new ClinicalCatalog());
+		for (String column : Arrays.asList("age", "sex", "ageGroup", "ethnicity", "pregnancy", "period", "origin")) {
+			DemographicReport table = calculator.geography(Arrays.asList(a, b), column, "dia", a.date, b.date,
+			    DemographicCalculator.groups(null), calendar);
+			assertEquals(2, table.total);
+			assertEquals(Arrays.asList(1, 1), table.rowTotals);
+			String expected = "age".equals(column) ? "12"
+			        : "sex".equals(column) ? "F"
+			                : "ageGroup".equals(column) ? "ADOLESCENTS"
+			                        : "ethnicity".equals(column) ? a.ethnicity
+			                                : "pregnancy".equals(column) ? "NO"
+			                                        : "period".equals(column) ? "2026-01-01" : "AUTOCTONO";
+			int index = -1;
+			for (int i = 0; i < table.columns.size(); i++)
+				if (expected.equals(table.columns.get(i).key))
+					index = i;
+			assertTrue(index >= 0);
+			assertEquals(Integer.valueOf(1), table.values.get(0).get(index));
+			assertEquals(2, table.columnTotals.stream().mapToInt(Integer::intValue).sum());
+		}
+		for (String invalid : Arrays.asList("disease", "center", "invalid")) {
+			try {
+				calculator.geography(Arrays.asList(a), invalid, "mes", a.date, b.date, DemographicCalculator.groups(null),
+				    calendar);
+				fail("Invalid geographic column accepted");
+			}
+			catch (SurveillanceException expected) {
+				assertEquals("INVALID_DEMOGRAPHIC_DIMENSIONS", expected.getCode());
+			}
+		}
+	}
+
 	private GeographicCalculator.Record record(int center, String date, String origin) {
 		GeographicCalculator.Record value = new GeographicCalculator.Record();
 		value.center = center;
@@ -120,6 +166,8 @@ public class GeographicTest {
 			value.setOnsetDate(new EpidemiologicalCalendar(f.m).date(LocalDate.parse("2026-01-01")));
 		}
 		probable.setDiagnosisType("PROBABLE");
+		confirmed.setPatientSex("F");
+		probable.setPatientSex("M");
 		elsewhere.setInfectionAddress(43);
 		when(f.dao.events()).thenReturn(Collections.singletonList(f.event));
 		when(f.dao.surveillanceCases()).thenReturn(Arrays.asList(confirmed, probable, elsewhere));
@@ -132,6 +180,11 @@ public class GeographicTest {
 		assertEquals(1, report.total);
 		assertEquals(0, report.unmappedCases);
 		assertEquals(-3.0, report.foci.get(0).latitude, 0);
+		GeographicReport bySex = f.service.geography(f.event.getUuid(), "2026-01-01", "2026-01-31", "PROVINCIA", "province",
+		    "TODOS", "sex", "mes");
+		assertEquals(2, bySex.table.total);
+		assertEquals(bySex.total, bySex.table.total);
+		assertEquals(Arrays.asList(1, 1, 0, 0), bySex.table.values.get(0));
 		assertEquals(1,
 		    f.service.geography(f.event.getUuid(), "2026-01-01", "2026-01-31", "PROVINCIA", "province", "PROBABLE").total);
 		assertEquals(2,

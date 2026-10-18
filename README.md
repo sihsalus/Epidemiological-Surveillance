@@ -47,6 +47,22 @@ La migración `liquibase-event-state.xml` inicializa el estado según la vigenci
 
 Los casos `CONFIRMADO` y `PROBABLE` desencadenan el recálculo de `period_case_count`. Si se requiere reconciliar datos históricos, un usuario con privilegio de configuración puede ejecutar `POST /counts/refresh`. Solo se cuentan casos no anulados, con fecha de inicio y centro poblado, en su centro poblado y distrito.
 
+## Columnas del consolidado geográfico
+
+`GET /reports/geography` admite `column=origin|age|sex|ageGroup|ethnicity|pregnancy|period`
+y `period=dia|semana|mes|trimestre|semestre|anio`, con valores iniciales `origin`
+y `mes`. La respuesta agrega `table`: filas identificadas por centro poblado,
+columnas, matriz, totales y grupos etarios. Reutiliza los dominios y cálculos de
+demografía sin habilitar Enfermedad en este cruce. La selección territorial,
+enfermedad, clasificación y fechas se aplica a la misma población que el mapa.
+Solo la tabla usa la dimensión seleccionada; riesgo e historial de focos conservan
+su cálculo. El servidor devuelve agregados, nunca fichas de pacientes.
+
+Actualizar ESM y OMOD juntos; no requiere migración. Se mantiene el privilegio
+de indicadores. Validación local: `mvn -B clean package` PASSED, incluidas columnas,
+totales, valores desconocidos y enlace de parámetros REST. DEV/QLTY integrado
+NOT RUN; no se realizó despliegue.
+
 ## Privilegios
 
 | Caso de uso | Privilegio definido en `config.xml` |

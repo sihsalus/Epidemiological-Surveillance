@@ -79,6 +79,8 @@ public class DemographicCalculator {
 	
 	public static class Record {
 		
+		public String center, origin;
+
 		public Integer age;
 		
 		public String sex;
@@ -96,6 +98,19 @@ public class DemographicCalculator {
 	        LocalDate to, List<AgeGroup> groups, Map<String, String> diseases, EpidemiologicalCalendar calendar) {
 		if (!DIMENSIONS.contains(row) || !DIMENSIONS.contains(column) || row.equals(column) || !PERIODS.contains(period))
 			throw new SurveillanceException(422, "INVALID_DEMOGRAPHIC_DIMENSIONS");
+		return aggregate(records, row, column, period, from, to, groups, diseases, calendar);
+	}
+
+	public DemographicReport geography(List<Record> records, String column, String period, LocalDate from, LocalDate to,
+	        List<AgeGroup> groups, EpidemiologicalCalendar calendar) {
+		if ((!DIMENSIONS.contains(column) && !"origin".equals(column)) || "disease".equals(column)
+		        || !PERIODS.contains(period))
+			throw new SurveillanceException(422, "INVALID_DEMOGRAPHIC_DIMENSIONS");
+		return aggregate(records, "center", column, period, from, to, groups, Collections.emptyMap(), calendar);
+	}
+
+	private DemographicReport aggregate(List<Record> records, String row, String column, String period, LocalDate from,
+	        LocalDate to, List<AgeGroup> groups, Map<String, String> diseases, EpidemiologicalCalendar calendar) {
 		DemographicReport result = new DemographicReport();
 		result.row = row;
 		result.column = column;
@@ -159,6 +174,9 @@ public class DemographicCalculator {
 	private LinkedHashMap<String, String> domain(String dimension, LocalDate from, LocalDate to, String period,
 	        List<AgeGroup> groups, Map<String, String> diseases, EpidemiologicalCalendar calendar) {
 		LinkedHashMap<String, String> result = new LinkedHashMap<String, String>();
+		if ("origin".equals(dimension))
+			for (String key : GeographicCalculator.ORIGINS)
+				result.put(key, key);
 		if ("ageGroup".equals(dimension))
 			for (AgeGroup group : groups)
 				result.put(group.key, group.key);
@@ -175,7 +193,7 @@ public class DemographicCalculator {
 			        .isAfter(to); date = "anio".equals(period) ? date.plusYears(1) : calendar.next(date, period))
 				result.put(date.toString(), periodLabel(date, period, calendar));
 		}
-		if (!"disease".equals(dimension) && !"period".equals(dimension))
+		if (!"center".equals(dimension) && !"disease".equals(dimension) && !"period".equals(dimension))
 			result.put(UNKNOWN, UNKNOWN);
 		return result;
 	}
@@ -183,6 +201,10 @@ public class DemographicCalculator {
 	private String value(Record value, String dimension, List<AgeGroup> groups, String period,
 	        EpidemiologicalCalendar calendar) {
 		switch (dimension) {
+			case "center":
+				return value.center;
+			case "origin":
+				return GeographicCalculator.ORIGINS.contains(value.origin) ? value.origin : UNKNOWN;
 			case "age":
 				return value.age == null || value.age < 0 ? UNKNOWN : value.age.toString();
 			case "sex":

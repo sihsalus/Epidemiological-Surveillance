@@ -36,6 +36,11 @@ public interface SurveillanceService extends OpenmrsService {
 	
 	GeographicReport geography(String event, String from, String to, String zoneLevel, String address, String diagnosisType);
 	
+	@Authorized(SurveillanceConstants.REPORT)
+	@Transactional(readOnly = true)
+	GeographicReport geography(String event, String from, String to, String zoneLevel, String address, String diagnosisType,
+	        String column, String period);
+
 	@Authorized(SurveillanceConstants.ACCESS)
 	@Transactional(readOnly = true)
 	List<AgeGroup> getAgeGroups();
