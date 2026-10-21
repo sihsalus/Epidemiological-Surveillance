@@ -15,6 +15,18 @@ public interface SurveillanceService extends OpenmrsService {
 	
 	@Authorized(SurveillanceConstants.ACCESS)
 	@Transactional(readOnly = true)
+	int[] getNotificationSettings();
+	
+	@Authorized(SurveillanceConstants.MANAGE)
+	int[] saveNotificationSettings(List<Integer> values);
+	
+	@Authorized(SurveillanceConstants.REPORT)
+	@Transactional(readOnly = true)
+	Map<String, Object> indicators(String event, String from, String to, String zoneLevel, String address,
+	        String diagnosisType, String indicator);
+	
+	@Authorized(SurveillanceConstants.ACCESS)
+	@Transactional(readOnly = true)
 	int[] getEndemicSettings();
 	
 	@Authorized(SurveillanceConstants.MANAGE)
@@ -40,7 +52,7 @@ public interface SurveillanceService extends OpenmrsService {
 	@Transactional(readOnly = true)
 	GeographicReport geography(String event, String from, String to, String zoneLevel, String address, String diagnosisType,
 	        String column, String period);
-
+	
 	@Authorized(SurveillanceConstants.ACCESS)
 	@Transactional(readOnly = true)
 	List<AgeGroup> getAgeGroups();

@@ -34,7 +34,12 @@ public class SurveillanceCaseRequest {
 	
 	public String notificationDate;
 	
+	/** Legacy input ignored; death date belongs to Person. */
 	public String deathDate;
+	
+	public String deathAttribution;
+	
+	public String habitualResidence;
 	
 	public String surveillanceType;
 }

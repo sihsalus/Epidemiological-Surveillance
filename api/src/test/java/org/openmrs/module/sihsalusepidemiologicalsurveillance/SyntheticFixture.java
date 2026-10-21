@@ -192,7 +192,8 @@ class SyntheticFixture {
 		surveillanceRequest.onsetDate = "2026-01-19";
 		surveillanceRequest.vaccinationStatus = "IGN";
 		surveillanceRequest.investigationDate = "2026-01-20";
-		surveillanceRequest.notificationDate = "2026-01-21";
+		surveillanceRequest.notificationDate = "2026-01-21T12:00:00-05:00";
+		surveillanceRequest.habitualResidence = "1";
 		surveillanceRequest.deathDate = "2026-01-22";
 		surveillanceRequest.surveillanceType = "PASIVA";
 	}

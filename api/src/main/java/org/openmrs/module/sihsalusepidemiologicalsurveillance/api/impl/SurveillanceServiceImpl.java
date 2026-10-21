@@ -16,6 +16,98 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.*;
 public class SurveillanceServiceImpl extends BaseOpenmrsService implements SurveillanceService {
 	
 	@Override
+	public int[] getNotificationSettings() {
+		access.require(SurveillanceConstants.ACCESS);
+		int[] values = dao.notificationSettings();
+		return values == null ? new int[] { 1, 12, 0 } : values;
+	}
+	
+	@Override
+	public int[] saveNotificationSettings(List<Integer> values) {
+		access.require(SurveillanceConstants.MANAGE);
+		if (values == null || values.size() != 3 || values.contains(null) || values.get(0) < 1 || values.get(0) > 7
+		        || values.get(1) < 0 || values.get(1) > 23 || values.get(2) < 0 || values.get(2) > 59)
+			throw new SurveillanceException(422, "INVALID_NOTIFICATION_SETTINGS");
+		dao.saveNotificationSettings(values.get(0), values.get(1), values.get(2));
+		return new int[] { values.get(0), values.get(1), values.get(2) };
+	}
+	
+	@Override
+	public Map<String, Object> indicators(String eventUuid, String from, String to, String zoneLevel, String address,
+	        String diagnosisType, String indicator) {
+		access.require(SurveillanceConstants.REPORT);
+		if (!Arrays.asList("completeness", "fatality", "timeliness").contains(indicator))
+			throw new SurveillanceException(422, "INVALID_INDICATOR");
+		if (!Arrays.asList("CONFIRMADO", "PROBABLE", "TODOS").contains(diagnosisType)
+		        || "fatality".equals(indicator) && !"CONFIRMADO".equals(diagnosisType))
+			throw new SurveillanceException(422, "INVALID_DIAGNOSIS_TYPE");
+		ClinicalCatalog metadata = catalog.get();
+		EpidemiologicalCalendar calendar = new EpidemiologicalCalendar(metadata);
+		LocalDate start, end;
+		try {
+			start = LocalDate.parse(from);
+			end = LocalDate.parse(to);
+		}
+		catch (RuntimeException ex) {
+			throw new SurveillanceException(422, "INVALID_DATE_RANGE");
+		}
+		if (start.isAfter(end) || end.isAfter(calendar.today()))
+			throw new SurveillanceException(422, "INVALID_DATE_RANGE");
+		if (!Arrays.asList("DEPARTAMENTO", "PROVINCIA", "DISTRITO", "CENTRO_POBLADO").contains(zoneLevel))
+			throw new SurveillanceException(422, "INVALID_ZONE_LEVEL");
+		Integer addressId = ClinicalCatalogService.present(address) ? dao.addressId(address, reportAddressField(zoneLevel))
+		        : null;
+		if (ClinicalCatalogService.present(address) && addressId == null)
+			throw new SurveillanceException(422, "INVALID_REPORT_ADDRESS");
+		NotifiableEvent selected = null;
+		Map<String, String> diseases = new HashMap<String, String>();
+		for (ClinicalCatalog.Disease disease : metadata.diseases)
+			for (ClinicalCatalog.DiagnosisMapping mapping : disease.diagnoses)
+				diseases.put(mapping.diagnosisConceptUuid, disease.eventUuid);
+		for (NotifiableEvent event : dao.events()) {
+			if (event.getConcept() != null)
+				diseases.put(event.getConcept().getUuid(), event.getUuid());
+			if (event.getUuid().equals(eventUuid))
+				selected = event;
+		}
+		if (selected == null)
+			throw new SurveillanceException(422, "INVALID_DEMOGRAPHIC_EVENTS");
+		List<SurveillanceCase> cohort = new ArrayList<SurveillanceCase>();
+		Map<Integer, Integer> ancestors = new HashMap<Integer, Integer>();
+		for (SurveillanceCase value : dao.surveillanceCases()) {
+			if (value.isVoided() || value.getDiagnosis() == null || value.getDiagnosis().getVoided()
+			        || value.getDiagnosis().getDiagnosis() == null || value.getDiagnosis().getDiagnosis().getCoded() == null
+			        || value.getEncounter() == null || value.getEncounter().getVoided()
+			        || value.getEncounter().getEncounterDatetime() == null
+			        || !Arrays.asList("CONFIRMADO", "PROBABLE").contains(value.getDiagnosisType())
+			        || !"TODOS".equals(diagnosisType) && !diagnosisType.equals(value.getDiagnosisType()))
+				continue;
+			if (!eventUuid.equals(diseases.get(value.getDiagnosis().getDiagnosis().getCoded().getUuid())))
+				continue;
+			LocalDate date = calendar.local(value.getEncounter().getEncounterDatetime());
+			if (date.isBefore(start) || date.isAfter(end))
+				continue;
+			if (addressId != null) {
+				Integer location = value.getInfectionAddress();
+				if (location == null)
+					continue;
+				if (!"CENTRO_POBLADO".equals(zoneLevel)) {
+					if (!ancestors.containsKey(location))
+						ancestors.put(location, "DISTRITO".equals(zoneLevel) ? dao.districtIdForPopulatedCenter(location)
+						        : dao.ancestorIdForPopulatedCenter(location, reportAddressField(zoneLevel)));
+					location = ancestors.get(location);
+				}
+				if (!addressId.equals(location))
+					continue;
+			}
+			cohort.add(value);
+		}
+		int[] deadline = dao.notificationSettings();
+		return new IndicatorCalculator().calculate(cohort, indicator, selected.getPeriodicity(), metadata,
+		    deadline == null ? new int[] { 1, 12, 0 } : deadline);
+	}
+	
+	@Override
 	public int[] getEndemicSettings() {
 		access.require(SurveillanceConstants.ACCESS);
 		int[] values = dao.endemicSettings();
@@ -86,7 +178,7 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 	        String diagnosisType) {
 		return geography(eventUuid, from, to, zoneLevel, address, diagnosisType, "origin", "mes");
 	}
-
+	
 	@Override
 	public GeographicReport geography(String eventUuid, String from, String to, String zoneLevel, String address,
 	        String diagnosisType, String column, String period) {
@@ -470,10 +562,11 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 	public List<SurveillanceCaseResponse> listCases(String patientUuid, String diagnosisConceptUuid, String onsetFrom,
 	        String onsetTo, String notificationFrom, String notificationTo, Boolean fatal) {
 		access.require(SurveillanceConstants.VIEW);
-		Date onsetStart = date(onsetFrom), onsetEnd = date(onsetTo), notificationStart = date(notificationFrom),
-		        notificationEnd = date(notificationTo);
+		Date onsetStart = date(onsetFrom), onsetEnd = date(onsetTo),
+		        notificationStart = notificationBoundary(notificationFrom, false),
+		        notificationEnd = notificationBoundary(notificationTo, true);
 		if (onsetStart != null && onsetEnd != null && onsetEnd.before(onsetStart)
-		        || notificationStart != null && notificationEnd != null && notificationEnd.before(notificationStart))
+		        || notificationStart != null && notificationEnd != null && !notificationEnd.after(notificationStart))
 			throw new SurveillanceException(422, "INVALID_DATE_RANGE");
 		List<SurveillanceCaseResponse> result = new ArrayList<SurveillanceCaseResponse>();
 		for (SurveillanceCase value : dao.surveillanceCases()) {
@@ -487,8 +580,8 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 			        || notificationStart != null
 			                && (value.getNotificationDate() == null || value.getNotificationDate().before(notificationStart))
 			        || notificationEnd != null
-			                && (value.getNotificationDate() == null || value.getNotificationDate().after(notificationEnd))
-			        || fatal != null && fatal.booleanValue() != (value.getDeathDate() != null))
+			                && (value.getNotificationDate() == null || !value.getNotificationDate().before(notificationEnd))
+			        || fatal != null && fatal.booleanValue() != (value.getPatient().getDeathDate() != null))
 				continue;
 			result.add(response(value));
 		}
@@ -501,8 +594,6 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		SurveillanceCase value = dao.byUuid(SurveillanceCase.class, uuid);
 		if (value == null || value.isVoided())
 			throw new SurveillanceException(404, "CASE_NOT_FOUND");
-		if (value.getDeathDate() != null)
-			throw new SurveillanceException(409, "CASE_CLOSED");
 		populate(value, request, actor, false);
 		value.setChangedBy(actor);
 		value.setDateChanged(new Date());
@@ -534,7 +625,7 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 			throw new SurveillanceException(422, "REQUIRED_FIELDS", Collections.singletonList("patientIdentifier"));
 		if (!hasActiveResidence(value.getPatient()))
 			throw new SurveillanceException(422, "REQUIRED_FIELDS", Collections.singletonList("patientResidence"));
-		if (value.getDeathDate() == null)
+		if (value.getPatient().getDeathDate() == null)
 			throw new SurveillanceException(422, "REQUIRED_FIELDS", Collections.singletonList("deathDate"));
 		return result;
 	}
@@ -578,9 +669,10 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 	        boolean creating) {
 		if (request == null)
 			throw new SurveillanceException(422, "REQUIRED_FIELDS");
-		String[] keys = { "patientUuid", "encounterUuid", "providerUuid", "locationUuid", "diagnosisUuid", "diagnosisType" };
+		String[] keys = { "patientUuid", "encounterUuid", "providerUuid", "locationUuid", "diagnosisUuid", "diagnosisType",
+		        "vaccinationStatus", "surveillanceType" };
 		String[] values = { request.patientUuid, request.encounterUuid, request.providerUuid, request.locationUuid,
-		        request.diagnosisUuid, request.diagnosisType };
+		        request.diagnosisUuid, request.diagnosisType, request.vaccinationStatus, request.surveillanceType };
 		for (int i = 0; i < keys.length; i++)
 			if (!ClinicalCatalogService.present(values[i]))
 				throw new SurveillanceException(422, "REQUIRED_FIELDS", keys[i], "required");
@@ -627,6 +719,11 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		value.setDiagnosis(diagnosis);
 		value.setDiagnosisType(request.diagnosisType);
 		value.setOrigin(request.origin);
+		if (!ClinicalCatalogService.present(request.habitualResidence))
+			throw new SurveillanceException(422, "REQUIRED_FIELDS", "habitualResidence", "required");
+		if (!Arrays.asList("1", "2", "3").contains(request.habitualResidence))
+			throw new SurveillanceException(422, "INVALID_CLASSIFICATION", "habitualResidence", "selection");
+		value.setHabitualResidence(request.habitualResidence);
 		value.setVaccinationStatus(request.vaccinationStatus);
 		value.setSurveillanceType(request.surveillanceType);
 		if (ClinicalCatalogService.present(request.infectionAddressUuid)) {
@@ -659,8 +756,16 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 			throw new SurveillanceException(422, "INVALID_DATE", "encounterUuid", "dateFormat");
 		EpidemiologicalCalendar calendar = new EpidemiologicalCalendar(catalog.get());
 		value.setInvestigationDate(java.sql.Date.valueOf(calendar.local(encounter.getEncounterDatetime())));
-		value.setNotificationDate(date(request.notificationDate, "notificationDate"));
-		value.setDeathDate(date(request.deathDate, "deathDate"));
+		value.setNotificationDate(notificationTime(request.notificationDate));
+		// Person is authoritative; never accept a case-specific date of death.
+		String attribution = request.deathAttribution;
+		if (patient.getDeathDate() == null || !"CONFIRMADO".equals(request.diagnosisType))
+			attribution = null;
+		else if (attribution == null)
+			attribution = "POR_DETERMINAR";
+		else if (!Arrays.asList("SI", "NO", "POR_DETERMINAR").contains(attribution))
+			throw new SurveillanceException(422, "INVALID_CLASSIFICATION", "deathAttribution", "selection");
+		value.setDeathAttribution(attribution);
 		validateDates(value);
 		if (creating)
 			capturePatient(value, patient, calendar);
@@ -712,12 +817,12 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 	private void validateDates(SurveillanceCase value) {
 		EpidemiologicalCalendar calendar = new EpidemiologicalCalendar(catalog.get());
 		LocalDate investigation = calendar.local(value.getInvestigationDate());
-		LocalDate notification = value.getNotificationDate() == null ? null : calendar.local(value.getNotificationDate());
 		if (investigation.isAfter(calendar.today()))
 			throw new SurveillanceException(422, "INVALID_DATE_RANGE", "investigationDate", "future");
-		if (notification != null && notification.isAfter(calendar.today()))
+		if (value.getNotificationDate() != null && value.getNotificationDate().after(new Date()))
 			throw new SurveillanceException(422, "INVALID_DATE_RANGE", "notificationDate", "future");
-		if (notification != null && investigation.isAfter(notification))
+		if (value.getNotificationDate() != null
+		        && value.getNotificationDate().before(value.getEncounter().getEncounterDatetime()))
 			throw new SurveillanceException(422, "INVALID_DATE_RANGE", "notificationDate",
 			        "notificationBeforeInvestigation");
 		if (value.getOnsetDate() != null) {
@@ -725,8 +830,24 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 				throw new SurveillanceException(422, "INVALID_DATE_RANGE", "onsetDate", "afterCare");
 			if (value.getNotificationDate() != null && value.getOnsetDate().after(value.getNotificationDate()))
 				throw new SurveillanceException(422, "INVALID_DATE_RANGE", "notificationDate", "beforeOnset");
-			if (value.getDeathDate() != null && value.getDeathDate().before(value.getOnsetDate()))
-				throw new SurveillanceException(422, "INVALID_DATE_RANGE", "deathDate", "beforeOnset");
+		}
+	}
+	
+	private Date notificationBoundary(String value, boolean end) {
+		if (date(value) == null)
+			return null;
+		return Date.from(java.time.LocalDate.parse(value).plusDays(end ? 1 : 0).atStartOfDay()
+		        .toInstant(java.time.ZoneOffset.ofHours(-5)));
+	}
+	
+	private Date notificationTime(String value) {
+		if (!ClinicalCatalogService.present(value))
+			return null;
+		try {
+			return Date.from(java.time.OffsetDateTime.parse(value).toInstant());
+		}
+		catch (RuntimeException ex) {
+			throw new SurveillanceException(422, "INVALID_DATE", "notificationDate", "dateTimeFormat");
 		}
 	}
 	
@@ -807,7 +928,7 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		r.encounterDisplay = value.getEncounter().getEncounterType() == null ? null
 		        : value.getEncounter().getEncounterType().getName();
 		r.encounterDate = value.getEncounter().getEncounterDatetime() == null ? null
-		        : value.getEncounter().getEncounterDatetime().toString();
+		        : java.time.Instant.ofEpochMilli(value.getEncounter().getEncounterDatetime().getTime()).toString();
 		r.providerDisplay = value.getProvider().getName();
 		r.locationDisplay = value.getLocation().getName();
 		r.providerUuid = value.getProvider().getUuid();
@@ -827,14 +948,19 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		r.origin = value.getOrigin();
 		r.diagnosisType = value.getDiagnosisType();
 		r.vaccinationStatus = value.getVaccinationStatus();
+		r.habitualResidence = value.getHabitualResidence();
 		r.surveillanceType = value.getSurveillanceType();
 		r.infectionAddressUuid = value.getInfectionAddress() == null ? null : dao.addressUuid(value.getInfectionAddress());
 		r.infectionAddressDisplay = value.getInfectionAddress() == null ? null
 		        : dao.addressDisplay(value.getInfectionAddress());
 		r.onsetDate = value.getOnsetDate() == null ? null : value.getOnsetDate().toString();
 		r.investigationDate = value.getInvestigationDate() == null ? null : value.getInvestigationDate().toString();
-		r.notificationDate = value.getNotificationDate() == null ? null : value.getNotificationDate().toString();
-		r.deathDate = value.getDeathDate() == null ? null : value.getDeathDate().toString();
+		r.notificationDate = value.getNotificationDate() == null ? null
+		        : java.time.Instant.ofEpochMilli(value.getNotificationDate().getTime())
+		                .atOffset(java.time.ZoneOffset.ofHours(-5)).toString();
+		r.patientDeathDate = value.getPatient().getDeathDate() == null ? null : value.getPatient().getDeathDate().toString();
+		r.deathAttribution = r.patientDeathDate == null || !"CONFIRMADO".equals(value.getDiagnosisType()) ? null
+		        : value.getDeathAttribution() == null ? "POR_DETERMINAR" : value.getDeathAttribution();
 		return r;
 	}
 	

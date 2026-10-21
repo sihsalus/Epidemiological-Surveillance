@@ -15,9 +15,32 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.*;
 public class HibernateSurveillanceDao implements SurveillanceDao {
 	
 	@Override
+	@SuppressWarnings("unchecked")
+	public List<SurveillanceCase> casesForPerson(Integer personId) {
+		return sessionFactory.getCurrentSession().createCriteria(SurveillanceCase.class)
+		        .add(Restrictions.eq("patient.id", personId)).list();
+	}
+	
+	@Override
 	public void lockEventConcept(org.openmrs.Concept concept) {
 		sessionFactory.getCurrentSession().createSQLQuery("select concept_id from concept where concept_id = :id for update")
 		        .setInteger("id", concept.getId()).uniqueResult();
+	}
+	
+	@Override
+	public int[] notificationSettings() {
+		Object[] row = (Object[]) sessionFactory.getCurrentSession()
+		        .createSQLQuery("select weekday, hour, minute from surveillance_notification_config where id = 1")
+		        .uniqueResult();
+		return row == null ? null
+		        : new int[] { ((Number) row[0]).intValue(), ((Number) row[1]).intValue(), ((Number) row[2]).intValue() };
+	}
+	
+	@Override
+	public void saveNotificationSettings(int day, int hour, int minute) {
+		sessionFactory.getCurrentSession().createSQLQuery(
+		    "update surveillance_notification_config set weekday = :day, hour = :hour, minute = :minute where id = 1")
+		        .setInteger("day", day).setInteger("hour", hour).setInteger("minute", minute).executeUpdate();
 	}
 	
 	@Override

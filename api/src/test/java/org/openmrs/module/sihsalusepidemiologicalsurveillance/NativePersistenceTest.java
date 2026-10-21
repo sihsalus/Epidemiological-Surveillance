@@ -102,6 +102,73 @@ public class NativePersistenceTest extends BaseModuleContextSensitiveTest {
 	}
 	
 	@Test
+	public void personAndPatientSavesClearAttributionPersistently() {
+		Patient patient = Context.getPatientService().getPatient(2);
+		Encounter encounter = new Encounter();
+		encounter.setPatient(patient);
+		encounter.setEncounterDatetime(new Date());
+		encounter.setLocation(Context.getLocationService().getLocation(1));
+		encounter.setEncounterType(Context.getEncounterService().getAllEncounterTypes(false).get(0));
+		Context.getEncounterService().saveEncounter(encounter);
+		Diagnosis diagnosis = new Diagnosis();
+		diagnosis.setPatient(patient);
+		diagnosis.setEncounter(encounter);
+		diagnosis.setDiagnosis(new CodedOrFreeText(Context.getConceptService().getConcept(3), null, null));
+		diagnosis.setCertainty(ConditionVerificationStatus.CONFIRMED);
+		diagnosis.setRank(1);
+		Context.getDiagnosisService().save(diagnosis);
+		Provider provider = new Provider();
+		provider.setPerson(Context.getAuthenticatedUser().getPerson());
+		provider.setIdentifier("snapshot-synthetic");
+		Context.getProviderService().saveProvider(provider);
+		SurveillanceCase value = new SurveillanceCase();
+		value.setPatient(patient);
+		value.setEncounter(encounter);
+		value.setDiagnosis(diagnosis);
+		value.setProvider(provider);
+		value.setLocation(encounter.getLocation());
+		value.setDiagnosisType("PROBABLE");
+		value.setCreator(Context.getAuthenticatedUser());
+		value.setDateCreated(new Date());
+		
+		patient.setCauseOfDeathNonCoded("Synthetic cause");
+		patient.setDead(true);
+		patient.setDeathDate(new Date());
+		Context.getPatientService().savePatient(patient);
+		value.setDeathAttribution("SI");
+		dao.save(value);
+		String uuid = value.getUuid();
+		Context.flushSession();
+		Context.clearSession();
+		value = dao.byUuid(SurveillanceCase.class, uuid);
+		assertEquals("SI", value.getDeathAttribution());
+		patient = value.getPatient();
+		patient.setDead(false);
+		patient.setDeathDate(null);
+		Context.getPatientService().savePatient(patient);
+		Context.flushSession();
+		Context.clearSession();
+		value = dao.byUuid(SurveillanceCase.class, uuid);
+		assertNull(value.getDeathAttribution());
+		Person person = Context.getPersonService().getPerson(value.getPatient().getId());
+		person.setCauseOfDeathNonCoded("Synthetic cause");
+		person.setDead(true);
+		person.setDeathDate(new Date());
+		Context.getPersonService().savePerson(person);
+		value.setDeathAttribution("NO");
+		dao.save(value);
+		Context.flushSession();
+		Context.clearSession();
+		person = Context.getPersonService().getPerson(person.getId());
+		person.setDead(false);
+		person.setDeathDate(null);
+		Context.getPersonService().savePerson(person);
+		Context.flushSession();
+		Context.clearSession();
+		assertNull(dao.byUuid(SurveillanceCase.class, uuid).getDeathAttribution());
+	}
+	
+	@Test
 	public void hibernatePersistsSnapshotButNeverUpdatesItsColumns() {
 		Patient patient = Context.getPatientService().getPatient(2);
 		Encounter encounter = new Encounter();
@@ -130,6 +197,8 @@ public class NativePersistenceTest extends BaseModuleContextSensitiveTest {
 		value.setDiagnosisType("PROBABLE");
 		value.setCreator(Context.getAuthenticatedUser());
 		value.setDateCreated(new Date());
+		value.setNotificationDate(java.util.Date.from(java.time.Instant.parse("2026-01-22T04:35:12Z")));
+		value.setHabitualResidence("3");
 		value.setPatientGivenNames("Synthetic Given");
 		value.setPatientPaternalSurname("Paternal");
 		value.setPatientMaternalSurname("Maternal");
@@ -142,6 +211,8 @@ public class NativePersistenceTest extends BaseModuleContextSensitiveTest {
 		Context.flushSession();
 		Context.clearSession();
 		value = dao.byUuid(SurveillanceCase.class, uuid);
+		assertEquals(java.time.Instant.parse("2026-01-22T04:35:12Z").toEpochMilli(), value.getNotificationDate().getTime());
+		assertEquals("3", value.getHabitualResidence());
 		assertEquals("Synthetic Given", value.getPatientGivenNames());
 		assertTrue(value.getPregnant());
 		value.setPatientGivenNames("Changed");
@@ -155,6 +226,8 @@ public class NativePersistenceTest extends BaseModuleContextSensitiveTest {
 		Context.flushSession();
 		Context.clearSession();
 		value = dao.byUuid(SurveillanceCase.class, uuid);
+		assertEquals(java.time.Instant.parse("2026-01-22T04:35:12Z").toEpochMilli(), value.getNotificationDate().getTime());
+		assertEquals("3", value.getHabitualResidence());
 		assertEquals("Synthetic Given", value.getPatientGivenNames());
 		assertEquals("Paternal", value.getPatientPaternalSurname());
 		assertEquals("Maternal", value.getPatientMaternalSurname());

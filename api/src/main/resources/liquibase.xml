@@ -37,4 +37,6 @@
     <include file="liquibase-coordinate-codes.xml"/>
     <include file="liquibase-endemic-config.xml"/>
     <include file="liquibase-event-state.xml"/>
+    <include file="liquibase-notification-time.xml"/>
+    <include file="liquibase-notification-config.xml"/>
 </databaseChangeLog>

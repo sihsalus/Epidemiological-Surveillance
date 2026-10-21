@@ -35,7 +35,7 @@ public class LiquibaseMigrationTest {
 				sql.execute("create table users(user_id int primary key)");
 				sql.execute("create table patient(patient_id int primary key)");
 				sql.execute("create table location(location_id int primary key)");
-				sql.execute("create table encounter(encounter_id int primary key)");
+				sql.execute("create table encounter(encounter_id int primary key, encounter_datetime timestamp)");
 				sql.execute("create table provider(provider_id int primary key)");
 				assertEquals("encounter_diagnosis",
 				    org.openmrs.Diagnosis.class.getAnnotation(javax.persistence.Table.class).name());
@@ -52,7 +52,7 @@ public class LiquibaseMigrationTest {
 				sql.execute("insert into users values (1)");
 				sql.execute("insert into patient values (1)");
 				sql.execute("insert into location values (1)");
-				sql.execute("insert into encounter values (1)");
+				sql.execute("insert into encounter values (1, TIMESTAMP '2026-01-20 23:30:00')");
 				sql.execute("insert into provider values (1)");
 				sql.execute("insert into encounter_diagnosis values (1)");
 				sql.execute("insert into orders values (1)");

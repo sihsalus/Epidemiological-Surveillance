@@ -58,7 +58,7 @@ public class GeographicTest {
 			}
 		}
 	}
-
+	
 	private GeographicCalculator.Record record(int center, String date, String origin) {
 		GeographicCalculator.Record value = new GeographicCalculator.Record();
 		value.center = center;

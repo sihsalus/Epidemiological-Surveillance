@@ -123,6 +123,26 @@ public class SurveillanceCase extends BaseOpenmrsObject {
 	
 	private Date deathDate;
 	
+	private String habitualResidence;
+	
+	public String getHabitualResidence() {
+		return habitualResidence;
+	}
+	
+	public void setHabitualResidence(String value) {
+		habitualResidence = value;
+	}
+	
+	private String deathAttribution;
+	
+	public String getDeathAttribution() {
+		return deathAttribution;
+	}
+	
+	public void setDeathAttribution(String value) {
+		deathAttribution = value;
+	}
+	
 	private String surveillanceType;
 	
 	private IndividualRecord individualRecord;

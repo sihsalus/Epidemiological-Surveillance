@@ -13,6 +13,28 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.web.controller.Sur
 public class SurveillanceControllerTest {
 	
 	@Test
+	public void indicatorRoutesBindCohortAndWeeklySettings() throws Exception {
+		SurveillanceService service = mock(SurveillanceService.class);
+		SurveillanceController controller = new SurveillanceController();
+		controller.setService(service);
+		org.springframework.test.web.servlet.MockMvc mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders
+		        .standaloneSetup(controller).build();
+		String base = "/rest/v1/sihsalusepidemiologicalsurveillance";
+		mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+		        .get(base + "/reports/indicators?event=test&from=2026-01-01&to=2026-01-31&indicator=fatality"))
+		        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk());
+		verify(service).indicators("test", "2026-01-01", "2026-01-31", "CENTRO_POBLADO", null, "CONFIRMADO", "fatality");
+		mvc.perform(
+		    org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(base + "/configuration/notification"))
+		        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk());
+		verify(service).getNotificationSettings();
+		mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+		        .put(base + "/configuration/notification").contentType("application/json").content("[2,9,30]"))
+		        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk());
+		verify(service).saveNotificationSettings(Arrays.asList(2, 9, 30));
+	}
+	
+	@Test
 	public void geographicRoutesBindDatesCoordinatesAndRiskArrays() throws Exception {
 		SurveillanceService service = mock(SurveillanceService.class);
 		SurveillanceController controller = new SurveillanceController();

@@ -17,7 +17,7 @@ public class SurveillanceServiceTest {
 	@Test
 	public void invalidCaseDateIdentifiesOnlyTheFieldAndViolatedCondition() {
 		SyntheticFixture f = new SyntheticFixture();
-		f.surveillanceRequest.notificationDate = "2026-01-19";
+		f.surveillanceRequest.notificationDate = "2026-01-19T12:00:00-05:00";
 		try {
 			f.service.createDraft(f.surveillanceRequest);
 			fail();
@@ -27,13 +27,13 @@ public class SurveillanceServiceTest {
 			    ex.getFieldErrors());
 			assertEquals(Collections.singletonList("notificationDate"), ex.getFields());
 		}
-		f.surveillanceRequest.notificationDate = "2026-02-30";
+		f.surveillanceRequest.notificationDate = "2026-02-30T12:00:00-05:00";
 		try {
 			f.service.createDraft(f.surveillanceRequest);
 			fail();
 		}
 		catch (SurveillanceException ex) {
-			assertEquals(Collections.singletonMap("notificationDate", "dateFormat"), ex.getFieldErrors());
+			assertEquals(Collections.singletonMap("notificationDate", "dateTimeFormat"), ex.getFieldErrors());
 		}
 		verify(f.dao, never()).save(any(SurveillanceCase.class));
 	}

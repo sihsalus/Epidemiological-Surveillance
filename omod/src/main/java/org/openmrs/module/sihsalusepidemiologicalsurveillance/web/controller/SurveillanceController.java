@@ -13,6 +13,29 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/rest/v1/sihsalusepidemiologicalsurveillance")
 public class SurveillanceController {
 	
+	@RequestMapping(value = "/configuration/notification", method = RequestMethod.GET)
+	@ResponseBody
+	public int[] notificationSettings() {
+		return service().getNotificationSettings();
+	}
+	
+	@RequestMapping(value = "/configuration/notification", method = RequestMethod.PUT, consumes = MediaType.APPLICATION_JSON_VALUE)
+	@ResponseBody
+	public int[] saveNotificationSettings(@RequestBody List<Integer> values) {
+		return service().saveNotificationSettings(values);
+	}
+	
+	@RequestMapping(value = "/reports/indicators", method = RequestMethod.GET)
+	@ResponseBody
+	public Map<String, Object> indicators(@RequestParam("event") String event, @RequestParam("from") String from,
+	        @RequestParam("to") String to,
+	        @RequestParam(value = "zoneLevel", defaultValue = "CENTRO_POBLADO") String zoneLevel,
+	        @RequestParam(value = "address", required = false) String address,
+	        @RequestParam(value = "diagnosisType", defaultValue = "CONFIRMADO") String diagnosisType,
+	        @RequestParam("indicator") String indicator) {
+		return service().indicators(event, from, to, zoneLevel, address, diagnosisType, indicator);
+	}
+	
 	@RequestMapping(value = "/configuration/endemic-channel", method = RequestMethod.GET)
 	@ResponseBody
 	public int[] endemicSettings() {

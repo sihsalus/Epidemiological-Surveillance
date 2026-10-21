@@ -33,10 +33,10 @@ listo para el flujo de notificación de iteración 2. Mientras no exista dicho f
   "onsetDate": "YYYY-MM-DD opcional",
   "infectionAddressUuid": "uuid de centro poblado opcional",
   "diagnosisType": "CONFIRMADO | PROBABLE | DESCARTADO",
+  "habitualResidence": "1 | 2 | 3 obligatorio",
   "vaccinationStatus": "SI | NO | IGN opcional",
-  "investigationDate": "YYYY-MM-DD opcional",
-  "notificationDate": "YYYY-MM-DD opcional",
-  "deathDate": "YYYY-MM-DD opcional",
+  "notificationDate": "YYYY-MM-DDTHH:mm:ss-05:00 opcional",
+  "deathAttribution": "SI | NO | POR_DETERMINAR | null",
   "surveillanceType": "PASIVA | BUSQUEDA_ACTIVA opcional"
 }
 ```
@@ -46,7 +46,47 @@ conceptos configurados; no acepta esos valores como campos del caso. Nombres, ed
 residencia y etnia no se aceptan ni se copian: se leen desde `patient`. Gestación se
 registra como `Obs` del encuentro mediante el formulario clínico.
 
+### Atribución de defunción (20/10/2026)
+
+`deathAttribution` sustituye la fecha editable del caso. Solo admite `SI`, `NO`
+y `POR_DETERMINAR` si `Person.deathDate` existe; omitirla en un fallecido usa
+`POR_DETERMINAR`. Sin esa fecha el servidor guarda `null`, incluso si recibe una
+selección antigua. `patientDeathDate` es de solo lectura y procede de Person.
+El campo anterior `deathDate` se ignora en solicitudes por compatibilidad; su
+columna histórica no se convierte en una afirmación de causalidad.
+
+El SaveHandler de Person/Patient limpia las atribuciones de todos sus casos al
+volver a vivo o retirar la fecha, con auditoría en la misma operación de guardado.
+Los casos de fallecidos siguen siendo editables. El filtro de fallecidos consulta
+Person, y la validación de cierre toma también esa fuente.
+Requiere actualizar ESM y OMOD juntos y aplicar la migración
+`surveillance-death-attribution-20261020` (columna nullable `varchar(20)`).
+
 ### Respuesta `SurveillanceCase`
+
+`notificationDate` conserva su nombre de API pero ahora contiene un instante con
+fecha, hora y offset. Se devuelve normalizado a UTC−5. Las solicitudes con solo
+fecha se rechazan; omitir el valor sigue representando un caso sin notificación.
+No puede ser anterior al instante de la atención de origen ni futuro.
+`investigationDate` se deriva de la atención y ya no se captura ni se envía desde
+el formulario. Se conserva internamente para validaciones y datos históricos.
+
+La migración `notification-time-20261020` cambia `notification_date` de DATE a
+DATETIME y reemplaza cada fecha existente por `encounter_datetime + 1 hora`,
+incluidos cambios de día/año. Conserva null en casos sin notificación. Usa la
+misma convención de almacenamiento JDBC que la atención de OpenMRS; los instantes
+se presentan y transmiten en UTC−5. Los filtros de fechas abarcan días completos
+en UTC−5, con el límite superior excluyente en la medianoche siguiente.
+Actualizar OMOD y frontend juntos antes de admitir nuevas escrituras.
+
+`encounterDate` se serializa como instante ISO 8601 en UTC con sufijo `Z`.
+La vista del caso lo convierte a UTC−5; no depende de la zona del navegador.
+
+`habitualResidence` identifica Residencia Habitual: `"1"` Urbana, `"2"` Urbana
+marginal y `"3"` Rural/Campesina. Es obligatorio en POST/PUT, sin selección
+predeterminada. Los históricos pueden devolver null y deben completarlo al editar.
+Se persiste en `habitual_residence varchar(1)` mediante la migración
+`surveillance-habitual-residence-20261020`; no modifica la dirección de Person.
 
 La respuesta añade nombres para presentación: `encounterDisplay`, `encounterDate`,
 `providerDisplay`, `locationDisplay`, `diagnosisDisplay`, `infectionAddressDisplay`
@@ -73,7 +113,8 @@ devuelven null: no se elige automáticamente una observación entre las de una o
   "vaccinationStatus": "IGN",
   "investigationDate": null,
   "notificationDate": null,
-  "deathDate": null,
+  "deathAttribution": null,
+  "patientDeathDate": null,
   "surveillanceType": "PASIVA",
   "individualRecordUuid": null
 }
@@ -160,3 +201,25 @@ Se conserva el UUID y la auditoría de creación, y se registra quién y cuándo
 
 Solo el último endpoint entrega referencias que el backend acepta como
 `infectionAddressUuid`.
+
+## Indicadores y cierre semanal (20/10/2026)
+
+GET `/reports/indicators`: parámetros `event`, `from`, `to`, `indicator`
+(`completeness`, `fatality`, `timeliness`), `diagnosisType` (`CONFIRMADO`, `PROBABLE`,
+`TODOS`), `zoneLevel` y `address` opcional. Requiere REPORT. El rango inclusivo se
+aplica al instante de atención convertido a fecha en la zona del calendario.
+Devuelve `indicator`, `numerator`, `denominator`, `percentage`; percentage es null
+si no hay casos. Fatality rechaza filtros distintos de CONFIRMADO.
+
+GET/PUT `/configuration/notification`: arreglo `[día ISO, hora, minuto]`.
+GET requiere ACCESS; PUT requiere MANAGE. Valores iniciales `[1,12,0]`.
+Se persiste en `surveillance_notification_config` mediante la migración
+`liquibase-notification-config.xml`. El día configurado cae en la semana posterior
+a la semana epidemiológica investigada. Notificación oportuna exige un instante
+estrictamente anterior al cierre semanal o anterior a atención + 24 h si es
+inmediata, y nunca anterior a la atención. Ausencia de notificación no es oportuna.
+
+`vaccinationStatus` y `surveillanceType` son obligatorios en POST/PUT de casos.
+Los valores históricos nulos se conservan hasta editar. `deathAttribution` se
+normaliza a null salvo caso CONFIRMADO con Person.deathDate; se mantienen las
+restricciones y opciones anteriores. Los reportes no deducen causalidad.

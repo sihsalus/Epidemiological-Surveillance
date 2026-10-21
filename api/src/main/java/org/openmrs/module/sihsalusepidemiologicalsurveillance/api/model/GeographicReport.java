@@ -8,7 +8,7 @@ public class GeographicReport {
 	public String from, to;
 	
 	public DemographicReport table;
-
+	
 	public int referenceYear, total, unmappedCases;
 	
 	public int[] riskThresholds;

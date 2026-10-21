@@ -4,6 +4,8 @@ public class SurveillanceCaseResponse extends SurveillanceCaseRequest {
 	
 	public String uuid;
 	
+	public String patientDeathDate;
+	
 	public String individualRecordUuid;
 	
 	public String patientIdentifier;

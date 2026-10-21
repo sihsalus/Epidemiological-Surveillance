@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+ <changeSet id="notification-time-20261020" author="sihsalus">
+  <modifyDataType tableName="surveillance_case" columnName="notification_date" newDataType="datetime"/>
+  <!-- Both timestamps use the same OpenMRS/JDBC storage zone. Preserve unnotified drafts. -->
+  <sql dbms="mysql,mariadb">UPDATE surveillance_case c JOIN encounter e ON e.encounter_id = c.encounter_id SET c.notification_date = DATE_ADD(e.encounter_datetime, INTERVAL 1 HOUR) WHERE c.notification_date IS NOT NULL</sql>
+  <sql dbms="h2">UPDATE surveillance_case SET notification_date = (SELECT DATEADD('HOUR', 1, e.encounter_datetime) FROM encounter e WHERE e.encounter_id = surveillance_case.encounter_id) WHERE notification_date IS NOT NULL</sql>
+ </changeSet>
+</databaseChangeLog>

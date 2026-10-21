@@ -12,6 +12,10 @@ public interface SurveillanceDao {
 	
 	void lockEventConcept(org.openmrs.Concept concept);
 	
+	int[] notificationSettings();
+	
+	void saveNotificationSettings(int day, int hour, int minute);
+	
 	int[] endemicSettings();
 	
 	void saveEndemicSettings(int years, int minimum);
@@ -62,6 +66,8 @@ public interface SurveillanceDao {
 	Integer ancestorIdForPopulatedCenter(Integer populatedCenterId, String field);
 	
 	List<SurveillanceCase> surveillanceCases();
+	
+	List<SurveillanceCase> casesForPerson(Integer personId);
 	
 	SurveillanceCase caseByDiagnosis(org.openmrs.Diagnosis diagnosis);
 	

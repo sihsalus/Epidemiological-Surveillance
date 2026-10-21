@@ -80,7 +80,7 @@ public class DemographicCalculator {
 	public static class Record {
 		
 		public String center, origin;
-
+		
 		public Integer age;
 		
 		public String sex;
@@ -100,7 +100,7 @@ public class DemographicCalculator {
 			throw new SurveillanceException(422, "INVALID_DEMOGRAPHIC_DIMENSIONS");
 		return aggregate(records, row, column, period, from, to, groups, diseases, calendar);
 	}
-
+	
 	public DemographicReport geography(List<Record> records, String column, String period, LocalDate from, LocalDate to,
 	        List<AgeGroup> groups, EpidemiologicalCalendar calendar) {
 		if ((!DIMENSIONS.contains(column) && !"origin".equals(column)) || "disease".equals(column)
@@ -108,7 +108,7 @@ public class DemographicCalculator {
 			throw new SurveillanceException(422, "INVALID_DEMOGRAPHIC_DIMENSIONS");
 		return aggregate(records, "center", column, period, from, to, groups, Collections.emptyMap(), calendar);
 	}
-
+	
 	private DemographicReport aggregate(List<Record> records, String row, String column, String period, LocalDate from,
 	        LocalDate to, List<AgeGroup> groups, Map<String, String> diseases, EpidemiologicalCalendar calendar) {
 		DemographicReport result = new DemographicReport();

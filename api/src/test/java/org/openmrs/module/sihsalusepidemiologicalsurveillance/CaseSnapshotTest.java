@@ -17,6 +17,13 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.Surveillance
 public class CaseSnapshotTest {
 	
 	@Test
+	public void encounterDateIncludesAnUnambiguousUtcOffset() {
+		SyntheticFixture f = new SyntheticFixture();
+		assertEquals(java.time.Instant.ofEpochMilli(f.source.getEncounterDatetime().getTime()).toString(),
+		    f.service.createDraft(f.surveillanceRequest).encounterDate);
+	}
+	
+	@Test
 	public void legacyResidenceDisplaysDepartmentFirstWithoutChangingSnapshot() {
 		SyntheticFixture f = new SyntheticFixture();
 		f.service.createDraft(f.surveillanceRequest);
@@ -109,7 +116,7 @@ public class CaseSnapshotTest {
 	
 	@Test
 	public void datesRejectFutureAndNotificationBeforeInvestigation() {
-		for (String notification : new String[] { "2026-01-19", "2999-01-01" }) {
+		for (String notification : new String[] { "2026-01-19T12:00:00-05:00", "2999-01-01T12:00:00-05:00" }) {
 			SyntheticFixture f = new SyntheticFixture();
 			f.surveillanceRequest.notificationDate = notification;
 			try {
@@ -138,7 +145,8 @@ public class CaseSnapshotTest {
 		SyntheticFixture f = new SyntheticFixture();
 		EpidemiologicalCalendar calendar = new EpidemiologicalCalendar(f.m);
 		f.source.setEncounterDatetime(calendar.date(calendar.today()));
-		f.surveillanceRequest.notificationDate = calendar.today().toString();
+		f.surveillanceRequest.notificationDate = java.time.Instant.ofEpochMilli(f.source.getEncounterDatetime().getTime())
+		        .atOffset(java.time.ZoneOffset.ofHours(-5)).toString();
 		assertEquals(calendar.today().toString(), f.service.createDraft(f.surveillanceRequest).investigationDate);
 	}
 }
