@@ -95,6 +95,10 @@ public interface SurveillanceService extends OpenmrsService {
 	
 	SurveillanceCaseResponse createDraft(SurveillanceCaseRequest request);
 	
+	@Authorized(value = { SurveillanceConstants.VIEW, SurveillanceConstants.REPORT }, requireAll = true)
+	@Transactional(readOnly = true)
+	Map<String, Object> weeklyRecords(int year, int week);
+	
 	List<SurveillanceCaseResponse> listCases(String patientUuid, String diagnosisConceptUuid, String onsetFrom,
 	        String onsetTo, String notificationFrom, String notificationTo, Boolean fatal);
 	

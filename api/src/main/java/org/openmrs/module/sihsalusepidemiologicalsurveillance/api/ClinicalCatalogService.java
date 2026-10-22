@@ -3,6 +3,7 @@ package org.openmrs.module.sihsalusepidemiologicalsurveillance.api;
 import java.util.*;
 
 import org.openmrs.*;
+import org.openmrs.api.ConceptNameType;
 import org.openmrs.module.sihsalusepidemiologicalsurveillance.api.db.ClinicalData;
 import org.openmrs.module.sihsalusepidemiologicalsurveillance.api.model.ClinicalCatalog;
 
@@ -53,7 +54,8 @@ public class ClinicalCatalogService {
 	}
 	
 	/**
-	 * Like {@link #icd10} but returns {@code null} when no unique ICD10 code is found (dynamic events).
+	 * Display/export code: prefer a unique ICD10 mapping, then a unique MINSA SHORT name. Missing or
+	 * ambiguous codes return null; strict registration validation remains in icd10.
 	 */
 	public static String icd10OrNull(Concept concept, ClinicalCatalog m) {
 		Set<String> codes = new HashSet<String>();
@@ -62,6 +64,16 @@ public class ClinicalCatalogService {
 			if (term != null && !term.getRetired() && term.getConceptSource() != null
 			        && m.icd10SourceUuid.equals(term.getConceptSource().getUuid()))
 				codes.add(term.getCode());
+		}
+		if (!codes.isEmpty())
+			return codes.size() == 1 ? codes.iterator().next() : null;
+		// MINSA/OCL diagnoses can carry their ICD-10 code in a SHORT name only.
+		for (ConceptName name : concept.getNames()) {
+			if (!name.getVoided() && ConceptNameType.SHORT.equals(name.getConceptNameType()) && present(name.getName())) {
+				String code = name.getName().trim().toUpperCase(Locale.ROOT);
+				if (code.matches("[A-Z][0-9][A-Z0-9.]{1,5}"))
+					codes.add(code);
+			}
 		}
 		return codes.size() == 1 ? codes.iterator().next() : null;
 	}

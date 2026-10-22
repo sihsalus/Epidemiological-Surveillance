@@ -756,6 +756,8 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 			throw new SurveillanceException(422, "INVALID_DATE", "encounterUuid", "dateFormat");
 		EpidemiologicalCalendar calendar = new EpidemiologicalCalendar(catalog.get());
 		value.setInvestigationDate(java.sql.Date.valueOf(calendar.local(encounter.getEncounterDatetime())));
+		if (request.investigationForm != null)
+			value.setInvestigationForm(request.investigationForm);
 		value.setNotificationDate(notificationTime(request.notificationDate));
 		// Person is authoritative; never accept a case-specific date of death.
 		String attribution = request.deathAttribution;
@@ -906,6 +908,77 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		        : residence;
 	}
 	
+	@Override
+	public Map<String, Object> weeklyRecords(int year, int week) {
+		access.require(SurveillanceConstants.VIEW);
+		access.require(SurveillanceConstants.REPORT);
+		ClinicalCatalog metadata = catalog.get();
+		EpidemiologicalCalendar calendar = new EpidemiologicalCalendar(metadata);
+		LocalDate start = calendar.weekStart(year, week);
+		Date from = calendar.date(start), to = calendar.date(start.plusWeeks(1));
+		List<Map<String, Object>> rows = new ArrayList<Map<String, Object>>();
+		for (SurveillanceCase value : dao.weeklyCases(from, to)) {
+			if (value.isVoided() || value.getPatient() == null || value.getPatient().getVoided()
+			        || value.getEncounter() == null || value.getEncounter().getVoided() || value.getDiagnosis() == null
+			        || value.getDiagnosis().getVoided() || value.getNotificationDate() == null
+			        || value.getNotificationDate().before(from) || !value.getNotificationDate().before(to))
+				continue;
+			Map<String, Object> row = new LinkedHashMap<String, Object>();
+			row.put("id", value.getUuid());
+			row.put("year", year);
+			row.put("week", week);
+			row.put("paternalSurname", value.getPatientPaternalSurname());
+			row.put("maternalSurname", value.getPatientMaternalSurname());
+			row.put("givenNames", value.getPatientGivenNames());
+			row.put("age", value.getPatientAge());
+			row.put("sex", value.getPatientSex());
+			String dni = null;
+			for (PatientIdentifier identifier : value.getPatient().getIdentifiers())
+				if (!identifier.isVoided() && identifier.getIdentifierType() != null
+				        && "DNI".equalsIgnoreCase(identifier.getIdentifierType().getName())) {
+					dni = identifier.getIdentifier();
+					break;
+				}
+			row.put("dni", dni);
+			Integer center = value.getInfectionAddress();
+			row.put("province",
+			    center == null ? null : dao.addressCode(dao.ancestorIdForPopulatedCenter(center, "STATE_PROVINCE")));
+			row.put("district",
+			    center == null ? null : dao.addressCode(dao.ancestorIdForPopulatedCenter(center, "COUNTY_DISTRICT")));
+			row.put("locality", center == null ? null : dao.addressCode(center));
+			String residence = residenceDisplay(value.getPatientResidence());
+			String[] parts = residence == null ? new String[0] : residence.split(" → ", -1);
+			row.put("residence",
+			    parts.length >= 4 ? dao.residenceCode(parts[0].trim(), parts[1].trim(), parts[2].trim(), parts[3].trim())
+			            : null);
+			row.put("ethnicity", demographicEthnicity(value.getPatient(), metadata));
+			row.put("habitualResidence", value.getHabitualResidence());
+			Concept diagnosis = value.getDiagnosis().getDiagnosis() == null ? null
+			        : value.getDiagnosis().getDiagnosis().getCoded();
+			row.put("icd10", diagnosis == null ? null : ClinicalCatalogService.icd10OrNull(diagnosis, metadata));
+			row.put("diagnosisType", value.getDiagnosisType());
+			row.put("vaccinationStatus", value.getVaccinationStatus());
+			row.put("onsetDate", weeklyDate(value.getOnsetDate(), calendar));
+			row.put("deathDate", weeklyDate(value.getPatient().getDeathDate(), calendar));
+			row.put("investigationDate", weeklyDate(value.getInvestigationDate(), calendar));
+			row.put("notificationDate", weeklyDate(value.getNotificationDate(), calendar));
+			row.put("investigationForm", value.getInvestigationForm());
+			row.put("surveillanceType", value.getSurveillanceType());
+			rows.add(row);
+		}
+		Map<String, Object> result = new LinkedHashMap<String, Object>();
+		result.put("year", year);
+		result.put("week", week);
+		result.put("from", start.toString());
+		result.put("to", start.plusDays(6).toString());
+		result.put("rows", rows);
+		return result;
+	}
+	
+	private String weeklyDate(Date value, EpidemiologicalCalendar calendar) {
+		return value == null ? null : calendar.local(value).toString();
+	}
+	
 	private SurveillanceCaseResponse response(SurveillanceCase value) {
 		SurveillanceCaseResponse r = new SurveillanceCaseResponse();
 		r.uuid = value.getUuid();
@@ -938,6 +1011,9 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		        || value.getDiagnosis().getDiagnosis().getCoded() == null ? null
 		                : value.getDiagnosis().getDiagnosis().getCoded().getDisplayString();
 		r.testOrderUuid = value.getTestOrder() == null ? null : value.getTestOrder().getUuid();
+		r.diagnosisIcd10 = value.getDiagnosis().getDiagnosis() == null
+		        || value.getDiagnosis().getDiagnosis().getCoded() == null ? null
+		                : ClinicalCatalogService.icd10OrNull(value.getDiagnosis().getDiagnosis().getCoded(), catalog.get());
 		r.testOrderDisplay = value.getTestOrder() == null || value.getTestOrder().getConcept() == null ? null
 		        : value.getTestOrder().getConcept().getDisplayString();
 		Obs laboratory = value.getLaboratoryObservation();
@@ -955,6 +1031,7 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		        : dao.addressDisplay(value.getInfectionAddress());
 		r.onsetDate = value.getOnsetDate() == null ? null : value.getOnsetDate().toString();
 		r.investigationDate = value.getInvestigationDate() == null ? null : value.getInvestigationDate().toString();
+		r.investigationForm = value.getInvestigationForm();
 		r.notificationDate = value.getNotificationDate() == null ? null
 		        : java.time.Instant.ofEpochMilli(value.getNotificationDate().getTime())
 		                .atOffset(java.time.ZoneOffset.ofHours(-5)).toString();
@@ -1388,6 +1465,7 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		Map<String, Object> value = new LinkedHashMap<String, Object>();
 		value.put("uuid", event.getUuid());
 		value.put("conceptUuid", event.getConcept().getUuid());
+		value.put("icd10", ClinicalCatalogService.icd10OrNull(event.getConcept(), catalog.get()));
 		if (event.getConcept().getName() != null) {
 			value.put("conceptDisplay", event.getConcept().getName().getName());
 		} else if (event.getConcept().getDisplayString() != null) {

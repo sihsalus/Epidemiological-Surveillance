@@ -67,6 +67,8 @@ public interface SurveillanceDao {
 	
 	List<SurveillanceCase> surveillanceCases();
 	
+	List<SurveillanceCase> weeklyCases(Date from, Date to);
+	
 	List<SurveillanceCase> casesForPerson(Integer personId);
 	
 	SurveillanceCase caseByDiagnosis(org.openmrs.Diagnosis diagnosis);
@@ -74,6 +76,10 @@ public interface SurveillanceDao {
 	String addressUuid(Integer id);
 	
 	String addressDisplay(Integer id);
+	
+	String addressCode(Integer id);
+	
+	String residenceCode(String department, String province, String district, String locality);
 	
 	Integer addressId(String uuid);
 	

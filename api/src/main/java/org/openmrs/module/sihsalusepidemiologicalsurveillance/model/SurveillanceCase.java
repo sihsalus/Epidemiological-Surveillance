@@ -119,6 +119,9 @@ public class SurveillanceCase extends BaseOpenmrsObject {
 	
 	private Date investigationDate;
 	
+	/** Whether the case has an investigation form (yes/no). */
+	private boolean investigationForm;
+	
 	private Date notificationDate;
 	
 	private Date deathDate;
@@ -267,6 +270,14 @@ public class SurveillanceCase extends BaseOpenmrsObject {
 	
 	public void setInvestigationDate(Date value) {
 		investigationDate = value;
+	}
+	
+	public boolean getInvestigationForm() {
+		return investigationForm;
+	}
+	
+	public void setInvestigationForm(boolean value) {
+		investigationForm = value;
 	}
 	
 	public Date getNotificationDate() {

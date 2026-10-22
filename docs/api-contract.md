@@ -6,6 +6,34 @@ excepto `infectionAddressUuid`, que es el UUID de `address_hierarchy_entry`.
 
 ## Casos de vigilancia
 
+### Registro semanal (RF-13)
+
+`GET /weekly-records?year=2026&week=1` requiere **Ver Casos** y **Ver Indicadores**.
+Devuelve `{year, week, from, to, rows}`; `rows` contiene todos los casos de la
+semana de **notificación**, sin paginación del servidor. El intervalo incluye el
+inicio de semana y excluye el inicio de la siguiente, según la zona y reglas del
+catálogo. Semanas inexistentes devuelven 422 `INVALID_PERIOD`.
+
+Cada fila incluye `id`, `year`, `week`, `paternalSurname`,
+`maternalSurname`, `givenNames`, `age` (años), `sex`, `dni`, `province`, `district`,
+`locality` (lugar de infección), `residence`, `ethnicity` (nombre),
+`habitualResidence`, `icd10`, `diagnosisType`, `vaccinationStatus`,
+`onsetDate`, `deathDate`, `investigationDate`, `notificationDate` (fechas ISO),
+`investigationForm` (booleano) y `surveillanceType`. Los ausentes son null.
+`province`, `district`, `locality` y `residence` contienen códigos territoriales
+`user_generated_id` como texto. Residencia se resuelve por la jerarquía completa
+de la copia histórica del caso; ausencia o ambigüedad devuelve null. El frontend
+presenta y exporta ficha como S/N y vigilancia como P/A; `icd10` solo lleva el código.
+Incluye C/P/D y cualquier periodicidad; excluye casos y fuentes clínicas anulados.
+La exportación Excel/CSV la genera el frontend con estas filas autorizadas;
+no persiste archivos ni crea entidades `IndividualRecord`.
+
+Las respuestas de casos agregan `diagnosisIcd10`; las de eventos agregan `icd10`.
+Provienen del mapeo único a la fuente CIE-10 configurada. Ausencia o ambigüedad
+produce null, sin inferir códigos del texto del diagnóstico. Cuando no existen
+mapeos, se usa un nombre `SHORT` no anulado con formato CIE-10, siempre que sea
+único, según el contrato del catálogo MINSA/OCL.
+
 | Operación | Ruta | Privilegio | Resultado |
 |---|---|---|---|
 | Crear borrador | `POST /cases` | `Vigilancia Epidemiologica: Registrar Casos` | 201 `SurveillanceCase` |

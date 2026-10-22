@@ -32,6 +32,9 @@ public class SurveillanceCaseRequest {
 	
 	public String investigationDate;
 	
+	/** Investigation form: true = yes, false = no; omitted updates preserve the current value. */
+	public Boolean investigationForm;
+	
 	public String notificationDate;
 	
 	/** Legacy input ignored; death date belongs to Person. */

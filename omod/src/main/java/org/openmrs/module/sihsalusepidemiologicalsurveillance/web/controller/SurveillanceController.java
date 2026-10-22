@@ -106,6 +106,12 @@ public class SurveillanceController {
 	
 	private SurveillanceService service;
 	
+	@RequestMapping(value = "/weekly-records", method = RequestMethod.GET)
+	@ResponseBody
+	public Map<String, Object> weeklyRecords(@RequestParam("year") int year, @RequestParam("week") int week) {
+		return service().weeklyRecords(year, week);
+	}
+	
 	public void setService(SurveillanceService value) {
 		service = value;
 	}

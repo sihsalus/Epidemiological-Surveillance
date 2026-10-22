@@ -32,6 +32,17 @@ public class EpidemiologicalCalendar {
 		return LocalDate.now(zone);
 	}
 	
+	public LocalDate weekStart(int year, int week) {
+		if (year < 1900 || year > 9998 || week < 1 || week > 53)
+			throw new SurveillanceException(422, "INVALID_PERIOD");
+		LocalDate first = LocalDate.of(year, 1, 1).with(weeks.weekOfWeekBasedYear(), 1).with(weeks.weekBasedYear(), year)
+		        .with(weeks.dayOfWeek(), 1);
+		LocalDate result = first.plusWeeks(week - 1);
+		if (year(result, "semana") != year || number(result, "semana") != week)
+			throw new SurveillanceException(422, "INVALID_PERIOD");
+		return result;
+	}
+	
 	public int year(LocalDate date, String period) {
 		return "semana".equals(period) ? date.get(weeks.weekBasedYear()) : date.getYear();
 	}

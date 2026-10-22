@@ -215,6 +215,9 @@ public class NativePersistenceTest extends BaseModuleContextSensitiveTest {
 		assertEquals("3", value.getHabitualResidence());
 		assertEquals("Synthetic Given", value.getPatientGivenNames());
 		assertTrue(value.getPregnant());
+		Date notification = value.getNotificationDate();
+		assertEquals(1, dao.weeklyCases(notification, new Date(notification.getTime() + 1000)).size());
+		assertTrue(dao.weeklyCases(new Date(notification.getTime() - 1000), notification).isEmpty());
 		value.setPatientGivenNames("Changed");
 		value.setPatientPaternalSurname("Changed");
 		value.setPatientMaternalSurname("Changed");
@@ -313,6 +316,21 @@ public class NativePersistenceTest extends BaseModuleContextSensitiveTest {
 		assertEquals(Integer.valueOf(9000), dao.ancestorIdForPopulatedCenter(9003, "ADDRESS_1"));
 		assertEquals(Integer.valueOf(9001), dao.ancestorIdForPopulatedCenter(9003, "STATE_PROVINCE"));
 		assertNull(dao.ancestorIdForPopulatedCenter(9999, "ADDRESS_1"));
+		session.createSQLQuery("alter table address_hierarchy_entry add column if not exists user_generated_id varchar(255)")
+		        .executeUpdate();
+		session.createSQLQuery(
+		    "update address_hierarchy_entry set user_generated_id = '0101010001' where address_hierarchy_entry_id = 9003")
+		        .executeUpdate();
+		assertEquals("0101010001", dao.addressCode(9003));
+		assertNull(dao.addressCode(9999));
+		assertEquals("0101010001",
+		    dao.residenceCode("Departamento de prueba", "Provincia de prueba", "Distrito de prueba", "Centro de prueba"));
+		assertNull(dao.residenceCode("Otro departamento", "Provincia de prueba", "Distrito de prueba", "Centro de prueba"));
+		session.createSQLQuery(
+		    "insert into address_hierarchy_entry (address_hierarchy_entry_id,parent_id,name,level_id,user_generated_id) values (9004,9002,'Centro de prueba',4,'0101010002')")
+		        .executeUpdate();
+		assertNull(
+		    dao.residenceCode("Departamento de prueba", "Provincia de prueba", "Distrito de prueba", "Centro de prueba"));
 	}
 	
 	@Test

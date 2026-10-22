@@ -28,6 +28,8 @@ public class SurveillanceCaseResponse extends SurveillanceCaseRequest {
 	
 	public String diagnosisDisplay;
 	
+	public String diagnosisIcd10;
+	
 	public String encounterDisplay;
 	
 	public String encounterDate;

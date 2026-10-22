@@ -292,6 +292,14 @@ public class HibernateSurveillanceDao implements SurveillanceDao {
 	}
 	
 	@Override
+	public List<SurveillanceCase> weeklyCases(Date from, Date to) {
+		return sessionFactory.getCurrentSession().createCriteria(SurveillanceCase.class)
+		        .add(Restrictions.eq("voided", false)).add(Restrictions.ge("notificationDate", from))
+		        .add(Restrictions.lt("notificationDate", to)).addOrder(org.hibernate.criterion.Order.asc("notificationDate"))
+		        .addOrder(org.hibernate.criterion.Order.asc("id")).list();
+	}
+	
+	@Override
 	public SurveillanceCase caseByDiagnosis(org.openmrs.Diagnosis diagnosis) {
 		return (SurveillanceCase) sessionFactory.getCurrentSession().createCriteria(SurveillanceCase.class)
 		        .add(Restrictions.eq("diagnosis", diagnosis)).add(Restrictions.eq("voided", false)).uniqueResult();
@@ -314,6 +322,32 @@ public class HibernateSurveillanceDao implements SurveillanceDao {
 			return null;
 		return (row[0] == null ? "—" : row[0]) + " → " + (row[1] == null ? "—" : row[1]) + " → "
 		        + (row[2] == null ? "—" : row[2]) + " → " + (row[3] == null ? "—" : row[3]);
+	}
+	
+	@Override
+	public String addressCode(Integer id) {
+		if (id == null)
+			return null;
+		Object code = sessionFactory.getCurrentSession()
+		        .createSQLQuery(
+		            "select user_generated_id from address_hierarchy_entry where address_hierarchy_entry_id = :id")
+		        .setInteger("id", id).uniqueResult();
+		return code == null ? null : code.toString();
+	}
+	
+	@Override
+	public String residenceCode(String department, String province, String district, String locality) {
+		List<?> codes = sessionFactory.getCurrentSession()
+		        .createSQLQuery("select c.user_generated_id from address_hierarchy_entry c "
+		                + "join address_hierarchy_level l on l.address_hierarchy_level_id = c.level_id "
+		                + "join address_hierarchy_entry d on d.address_hierarchy_entry_id = c.parent_id "
+		                + "join address_hierarchy_entry p on p.address_hierarchy_entry_id = d.parent_id "
+		                + "join address_hierarchy_entry dep on dep.address_hierarchy_entry_id = p.parent_id "
+		                + "where l.address_field = 'CITY_VILLAGE' and dep.name = :department and p.name = :province "
+		                + "and d.name = :district and c.name = :locality")
+		        .setString("department", department).setString("province", province).setString("district", district)
+		        .setString("locality", locality).list();
+		return codes.size() == 1 && codes.get(0) != null ? codes.get(0).toString() : null;
 	}
 	
 	@Override
