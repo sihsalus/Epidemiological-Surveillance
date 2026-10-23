@@ -13,6 +13,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public interface SurveillanceService extends OpenmrsService {
 	
+	@Transactional(readOnly = true)
+	List<Map<String, Object>> alerts(String type, String reason, String status);
+	
+	Map<String, Object> attendAlert(String uuid);
+	
 	@Authorized(SurveillanceConstants.ACCESS)
 	@Transactional(readOnly = true)
 	int[] getNotificationSettings();
@@ -93,6 +98,7 @@ public interface SurveillanceService extends OpenmrsService {
 	@Transactional(isolation = Isolation.READ_COMMITTED)
 	CaseResult registerCase(CaseRequest request);
 	
+	@Transactional(isolation = Isolation.READ_COMMITTED)
 	SurveillanceCaseResponse createDraft(SurveillanceCaseRequest request);
 	
 	@Authorized(value = { SurveillanceConstants.VIEW, SurveillanceConstants.REPORT }, requireAll = true)
@@ -102,6 +108,7 @@ public interface SurveillanceService extends OpenmrsService {
 	List<SurveillanceCaseResponse> listCases(String patientUuid, String diagnosisConceptUuid, String onsetFrom,
 	        String onsetTo, String notificationFrom, String notificationTo, Boolean fatal);
 	
+	@Transactional(isolation = Isolation.READ_COMMITTED)
 	SurveillanceCaseResponse updateDraft(String uuid, SurveillanceCaseRequest request);
 	
 	SurveillanceCaseResponse getDraft(String uuid);

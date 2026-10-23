@@ -73,6 +73,15 @@ public class LiquibaseMigrationTest {
 			}
 			liquibase.update("");
 			liquibase.update("");
+			try (Statement sql = connection.createStatement()) {
+				sql.execute(
+				    "insert into surveillance_alert (uuid,type,reason,case_uuid,event_uuid,occurrence_key,status,generated_at) values ('a','IMMEDIATE','DEATH','c','e','occurrence','PENDING',CURRENT_TIMESTAMP)");
+				fails(sql,
+				    "insert into surveillance_alert (uuid,type,reason,case_uuid,event_uuid,occurrence_key,status,generated_at) values ('b','IMMEDIATE','DEATH','c','e','occurrence','PENDING',CURRENT_TIMESTAMP)");
+				sql.execute(
+				    "update surveillance_alert set status='ATTENDED', attended_at=CURRENT_TIMESTAMP, attended_by='responsible' where uuid='a'");
+			}
+			
 			try (Statement sql = connection.createStatement();
 			        ResultSet config = sql.executeQuery(
 			            "select historical_years, minimum_years from surveillance_endemic_config where id=1")) {

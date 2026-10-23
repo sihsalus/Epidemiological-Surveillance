@@ -13,6 +13,44 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/rest/v1/sihsalusepidemiologicalsurveillance")
 public class SurveillanceController {
 	
+	@RequestMapping(value = "/alerts/stream", method = RequestMethod.GET, produces = "text/event-stream")
+	@ResponseBody
+	public org.springframework.web.servlet.mvc.method.annotation.SseEmitter alertStream() {
+		service().alerts(null, null, "PENDING"); // All five privileges, including on every reconnect.
+		org.springframework.web.servlet.mvc.method.annotation.SseEmitter emitter = new org.springframework.web.servlet.mvc.method.annotation.SseEmitter(
+		        30000L);
+		Runnable listener = () -> {
+			try {
+				emitter.send(org.springframework.web.servlet.mvc.method.annotation.SseEmitter.event().data("changed"));
+			}
+			catch (Exception failure) {
+				emitter.complete();
+			}
+		};
+		AlertChanges.subscribe(listener);
+		emitter.onCompletion(() -> AlertChanges.unsubscribe(listener));
+		emitter.onTimeout(() -> {
+			AlertChanges.unsubscribe(listener);
+			emitter.complete();
+		});
+		listener.run(); // Fetch after subscribing closes the connect/commit race.
+		return emitter;
+	}
+	
+	@RequestMapping(value = "/alerts", method = RequestMethod.GET)
+	@ResponseBody
+	public List<Map<String, Object>> alerts(@RequestParam(value = "type", required = false) String type,
+	        @RequestParam(value = "reason", required = false) String reason,
+	        @RequestParam(value = "status", required = false) String status) {
+		return service().alerts(type, reason, status);
+	}
+	
+	@RequestMapping(value = "/alerts/{uuid}/attend", method = RequestMethod.POST)
+	@ResponseBody
+	public Map<String, Object> attendAlert(@PathVariable("uuid") String uuid) {
+		return service().attendAlert(uuid);
+	}
+	
 	@RequestMapping(value = "/configuration/notification", method = RequestMethod.GET)
 	@ResponseBody
 	public int[] notificationSettings() {

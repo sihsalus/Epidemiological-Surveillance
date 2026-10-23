@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog/1.9" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog/1.9 http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-1.9.xsd">
+<changeSet id="surveillance-rf10-rf11-alerts" author="sihsalus">
+<createTable tableName="surveillance_alert">
+<column name="id" type="int" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+<column name="uuid" type="varchar(64)"><constraints unique="true" nullable="false"/></column>
+<column name="type" type="varchar(64)"><constraints nullable="false"/></column>
+<column name="reason" type="varchar(64)"><constraints nullable="false"/></column>
+<column name="case_uuid" type="varchar(64)"><constraints nullable="false"/></column>
+<column name="event_uuid" type="varchar(64)"><constraints nullable="false"/></column>
+<column name="event_name" type="text"></column>
+<column name="center" type="text"></column>
+<column name="additional_information" type="text"></column>
+<column name="occurrence_key" type="varchar(255)"><constraints unique="true" nullable="false"/></column>
+<column name="status" type="varchar(64)"><constraints nullable="false"/></column>
+<column name="attended_by" type="varchar(64)"></column>
+<column name="generated_at" type="datetime"><constraints nullable="false"/></column>
+<column name="attended_at" type="datetime"></column>
+</createTable>
+</changeSet>
+</databaseChangeLog>

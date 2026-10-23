@@ -10,6 +10,14 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.*;
 
 public interface SurveillanceDao {
 	
+	org.openmrs.User alertAttendant(String reference);
+	
+	List<SurveillanceAlert> alerts();
+	
+	SurveillanceAlert saveAlert(SurveillanceAlert alert);
+	
+	void lockAlerts();
+	
 	void lockEventConcept(org.openmrs.Concept concept);
 	
 	int[] notificationSettings();

@@ -15,6 +15,36 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.*;
 public class HibernateSurveillanceDao implements SurveillanceDao {
 	
 	@Override
+	public org.openmrs.User alertAttendant(String reference) {
+		if (reference == null)
+			return null;
+		org.openmrs.User user = byUuid(org.openmrs.User.class, reference);
+		// Older alerts stored a username instead of the stable UUID.
+		return user != null ? user
+		        : (org.openmrs.User) sessionFactory.getCurrentSession().createCriteria(org.openmrs.User.class)
+		                .add(Restrictions.eq("username", reference)).uniqueResult();
+	}
+	
+	@Override
+	public SurveillanceAlert saveAlert(SurveillanceAlert alert) {
+		return save(alert);
+	}
+	
+	@Override
+	@SuppressWarnings("unchecked")
+	public List<SurveillanceAlert> alerts() {
+		return sessionFactory.getCurrentSession().createCriteria(SurveillanceAlert.class).addOrder(Order.desc("generatedAt"))
+		        .addOrder(Order.desc("id")).list();
+	}
+	
+	@Override
+	public void lockAlerts() {
+		// Single lock order for case writes and count refreshes, including different patients/events.
+		sessionFactory.getCurrentSession()
+		        .createSQLQuery("select id from surveillance_endemic_config where id = 1 for update").uniqueResult();
+	}
+	
+	@Override
 	@SuppressWarnings("unchecked")
 	public List<SurveillanceCase> casesForPerson(Integer personId) {
 		return sessionFactory.getCurrentSession().createCriteria(SurveillanceCase.class)

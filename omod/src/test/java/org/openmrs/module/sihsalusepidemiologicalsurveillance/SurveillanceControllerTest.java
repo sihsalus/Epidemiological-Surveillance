@@ -13,6 +13,30 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.web.controller.Sur
 public class SurveillanceControllerTest {
 	
 	@Test
+	public void alertRoutesBindFiltersAttendanceAndAuthorizedStream() throws Exception {
+		SurveillanceService service = mock(SurveillanceService.class);
+		SurveillanceController controller = new SurveillanceController();
+		controller.setService(service);
+		org.springframework.test.web.servlet.MockMvc mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders
+		        .standaloneSetup(controller).build();
+		String base = "/rest/v1/sihsalusepidemiologicalsurveillance/alerts";
+		mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+		        .get(base + "?type=OUTBREAK&reason=SUSTAINED_INCREASE&status=PENDING"))
+		        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk());
+		verify(service).alerts("OUTBREAK", "SUSTAINED_INCREASE", "PENDING");
+		mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(base + "/synthetic/attend"))
+		        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk());
+		verify(service).attendAlert("synthetic");
+		org.springframework.test.web.servlet.MvcResult stream = mvc
+		        .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(base + "/stream"))
+		        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.request().asyncStarted())
+		        .andReturn();
+		verify(service).alerts(null, null, "PENDING");
+		assertTrue(stream.getResponse().getContentAsString().contains("changed"));
+		stream.getRequest().getAsyncContext().complete();
+	}
+	
+	@Test
 	public void weeklyRecordsBindTheNotificationYearAndWeek() throws Exception {
 		SurveillanceService service = mock(SurveillanceService.class);
 		SurveillanceController controller = new SurveillanceController();

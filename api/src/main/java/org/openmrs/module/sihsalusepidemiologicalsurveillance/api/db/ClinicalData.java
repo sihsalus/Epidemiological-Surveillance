@@ -70,6 +70,28 @@ public class ClinicalData {
 		Context.getAlertService().saveAlert(new org.openmrs.notification.Alert(text, user));
 	}
 	
+	public void notifySurveillanceResponsibles(String text) {
+		// Internal notification only: case registrars need not hold user-directory/alert administration privileges.
+		java.util.List<String> temporary = new java.util.ArrayList<>();
+		try {
+			for (String privilege : java.util.Arrays.asList("Get Users", "Manage Alerts")) {
+				if (!Context.hasPrivilege(privilege)) {
+					Context.addProxyPrivilege(privilege);
+					temporary.add(privilege);
+				}
+			}
+			for (User user : Context.getUserService().getAllUsers()) {
+				if (!user.isRetired()
+				        && org.openmrs.module.sihsalusepidemiologicalsurveillance.api.AlertRules.isResponsible(user))
+					alert(user, text);
+			}
+		}
+		finally {
+			for (String privilege : temporary)
+				Context.removeProxyPrivilege(privilege);
+		}
+	}
+	
 	public Concept trueConcept() {
 		return Context.getConceptService().getTrueConcept();
 	}

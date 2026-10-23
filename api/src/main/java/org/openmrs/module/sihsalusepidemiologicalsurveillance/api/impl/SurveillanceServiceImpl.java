@@ -15,6 +15,161 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.*;
 
 public class SurveillanceServiceImpl extends BaseOpenmrsService implements SurveillanceService {
 	
+	private ClinicalCatalog alertMetadata() {
+		ClinicalCatalog metadata = catalog.get();
+		int[] settings = dao.endemicSettings();
+		metadata.historicalYears = settings == null ? 5 : settings[0];
+		metadata.minimumHistoricalYears = settings == null ? 3 : settings[1];
+		return metadata;
+	}
+	
+	private boolean alertEventMatches(NotifiableEvent event, SurveillanceCase value) {
+		if (value.getDiagnosis() == null || value.getDiagnosis().getDiagnosis() == null)
+			return false;
+		Concept concept = value.getDiagnosis().getDiagnosis().getCoded();
+		if (concept == null || event.getConcept() == null)
+			return false;
+		if (event.getConcept().equals(concept) || event.getConcept().getSetMembers().contains(concept))
+			return true;
+		for (ClinicalCatalog.Disease disease : catalog.get().diseases)
+			if (event.getUuid().equals(disease.eventUuid))
+				for (ClinicalCatalog.DiagnosisMapping mapping : disease.diagnoses)
+					if (concept.getUuid().equals(mapping.diagnosisConceptUuid))
+						return true;
+		return false;
+	}
+	
+	private Map<String, List<AlertRules.Snapshot>> alertSnapshots(ClinicalCatalog metadata) {
+		Map<String, List<AlertRules.Snapshot>> result = new LinkedHashMap<>();
+		List<SurveillanceCase> cases = dao.surveillanceCases();
+		EpidemiologicalCalendar calendar = new EpidemiologicalCalendar(metadata);
+		for (NotifiableEvent event : dao.events()) {
+			List<AlertRules.Snapshot> snapshots = new ArrayList<>();
+			for (SurveillanceCase value : cases)
+				if (alertEventMatches(event, value))
+					snapshots.add(AlertRules.Snapshot.of(value, calendar));
+			result.put(event.getUuid(), snapshots);
+		}
+		return result;
+	}
+	
+	private List<Map<String, Object>> generateAlerts(SurveillanceCase value, AlertRules.Snapshot previous,
+	        Map<String, List<AlertRules.Snapshot>> before, ClinicalCatalog metadata) {
+		List<Map<String, Object>> generated = new ArrayList<>();
+		Map<String, List<AlertRules.Snapshot>> after = alertSnapshots(metadata);
+		AlertRules.Snapshot current = AlertRules.Snapshot.of(value, new EpidemiologicalCalendar(metadata));
+		List<SurveillanceAlert> existing = dao.alerts();
+		for (NotifiableEvent event : dao.events()) {
+			if (!alertEventMatches(event, value))
+				continue;
+			for (AlertRules.Trigger trigger : new AlertRules().evaluate(current, previous,
+			    before.getOrDefault(event.getUuid(), Collections.emptyList()),
+			    after.getOrDefault(event.getUuid(), Collections.emptyList()), event.getPeriodicity(), metadata)) {
+				String key = event.getUuid() + ":" + trigger.reason + ":" + trigger.key;
+				// A→B→A→B are three distinct changes; identical PUT retries have no transition.
+				if ("STATUS_CHANGED".equals(trigger.reason))
+					key += ":" + existing.stream()
+					        .filter(a -> value.getUuid().equals(a.getCaseUuid()) && "STATUS_CHANGED".equals(a.getReason()))
+					        .count();
+				final String occurrence = key;
+				if (existing.stream().anyMatch(a -> occurrence.equals(a.getOccurrenceKey())))
+					continue;
+				SurveillanceAlert alert = new SurveillanceAlert();
+				alert.setUuid(UUID.randomUUID().toString());
+				alert.setOccurrenceKey(key);
+				alert.setType(AlertRules.REASONS.indexOf(trigger.reason) < 4 ? "IMMEDIATE" : "OUTBREAK");
+				alert.setReason(trigger.reason);
+				alert.setCaseUuid(value.getUuid());
+				alert.setEventUuid(event.getUuid());
+				alert.setEventName(
+				    event.getConcept().getName() == null ? event.getUuid() : event.getConcept().getName().getName());
+				alert.setCenter(
+				    value.getInfectionAddress() == null ? null : dao.addressDisplay(value.getInfectionAddress()));
+				alert.setAdditionalInformation(trigger.information);
+				alert.setGeneratedAt(new Date());
+				alert.setStatus("PENDING");
+				dao.saveAlert(alert);
+				existing.add(alert);
+				generated.add(alertJson(alert));
+				clinical.notifySurveillanceResponsibles("Vigilancia epidemiologica: nueva alerta " + alert.getUuid());
+			}
+		}
+		if (!generated.isEmpty())
+			AlertChanges.afterCommit();
+		return generated;
+	}
+	
+	private User requireAlertResponsible() {
+		User user = null;
+		for (String privilege : AlertRules.PRIVILEGES)
+			user = access.require(privilege);
+		return user;
+	}
+	
+	private Map<String, Object> alertJson(SurveillanceAlert alert) {
+		Map<String, Object> r = new LinkedHashMap<>();
+		r.put("uuid", alert.getUuid());
+		r.put("type", alert.getType());
+		r.put("reason", alert.getReason());
+		r.put("caseUuid", alert.getCaseUuid());
+		if ("IMMEDIATE".equals(alert.getType()) && alert.getCaseUuid() != null) {
+			SurveillanceCase value = dao.byUuid(SurveillanceCase.class, alert.getCaseUuid());
+			if (value != null && !value.isVoided() && value.getPatient() != null && !value.getPatient().isVoided()) {
+				SurveillanceCaseResponse detail = response(value);
+				r.put("patientDisplay", detail.patientDisplay);
+				r.put("encounterDate", detail.encounterDate);
+				r.put("diagnosisDisplay", detail.diagnosisDisplay);
+				r.put("diagnosisIcd10", detail.diagnosisIcd10);
+			}
+		}
+		
+		r.put("eventUuid", alert.getEventUuid());
+		r.put("eventName", alert.getEventName());
+		r.put("center", alert.getCenter());
+		r.put("additionalInformation", alert.getAdditionalInformation());
+		r.put("generatedAt", alert.getGeneratedAt().toInstant().toString());
+		r.put("status", alert.getStatus());
+		r.put("attendedAt", alert.getAttendedAt() == null ? null : alert.getAttendedAt().toInstant().toString());
+		User attendant = alert.getAttendedBy() == null ? null : dao.alertAttendant(alert.getAttendedBy());
+		String attendantName = attendant == null ? null
+		        : attendant.getPersonName() == null ? null : attendant.getPersonName().getFullName();
+		r.put("attendedBy", ClinicalCatalogService.present(attendantName) ? attendantName
+		        : attendant == null ? null : attendant.getUsername());
+		return r;
+	}
+	
+	@Override
+	public List<Map<String, Object>> alerts(String type, String reason, String status) {
+		requireAlertResponsible();
+		if (type != null && !Arrays.asList("IMMEDIATE", "OUTBREAK").contains(type)
+		        || reason != null && !AlertRules.REASONS.contains(reason)
+		        || status != null && !Arrays.asList("PENDING", "ATTENDED").contains(status))
+			throw new SurveillanceException(422, "INVALID_CLASSIFICATION");
+		List<Map<String, Object>> result = new ArrayList<>();
+		for (SurveillanceAlert alert : dao.alerts())
+			if ((type == null || type.equals(alert.getType())) && (reason == null || reason.equals(alert.getReason()))
+			        && (status == null || status.equals(alert.getStatus())))
+				result.add(alertJson(alert));
+		return result;
+	}
+	
+	@Override
+	public Map<String, Object> attendAlert(String uuid) {
+		User actor = requireAlertResponsible();
+		dao.lockAlerts();
+		SurveillanceAlert alert = dao.byUuid(SurveillanceAlert.class, uuid);
+		if (alert == null)
+			throw new SurveillanceException(404, "INVALID_REFERENCE");
+		if (!"ATTENDED".equals(alert.getStatus())) {
+			alert.setStatus("ATTENDED");
+			alert.setAttendedAt(new Date());
+			alert.setAttendedBy(actor.getUuid());
+			dao.saveAlert(alert);
+			AlertChanges.afterCommit();
+		}
+		return alertJson(alert);
+	}
+	
 	@Override
 	public int[] getNotificationSettings() {
 		access.require(SurveillanceConstants.ACCESS);
@@ -550,12 +705,17 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 	@Override
 	public SurveillanceCaseResponse createDraft(SurveillanceCaseRequest request) {
 		User actor = access.require(SurveillanceConstants.REGISTER);
+		dao.lockAlerts();
+		ClinicalCatalog metadata = alertMetadata();
+		Map<String, List<AlertRules.Snapshot>> before = alertSnapshots(metadata);
 		SurveillanceCase value = populate(new SurveillanceCase(), request, actor, true);
 		value.setCreator(actor);
 		value.setDateCreated(new Date());
 		dao.save(value);
 		refreshCountsAfterCaseSave(value, actor);
-		return response(value);
+		SurveillanceCaseResponse response = response(value);
+		response.generatedAlerts = generateAlerts(value, null, before, metadata);
+		return response;
 	}
 	
 	@Override
@@ -591,16 +751,21 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 	@Override
 	public SurveillanceCaseResponse updateDraft(String uuid, SurveillanceCaseRequest request) {
 		User actor = access.require(SurveillanceConstants.REGISTER);
+		dao.lockAlerts();
 		SurveillanceCase value = dao.byUuid(SurveillanceCase.class, uuid);
 		if (value == null || value.isVoided())
 			throw new SurveillanceException(404, "CASE_NOT_FOUND");
+		ClinicalCatalog metadata = alertMetadata();
+		Map<String, List<AlertRules.Snapshot>> before = alertSnapshots(metadata);
+		AlertRules.Snapshot previous = AlertRules.Snapshot.of(value, new EpidemiologicalCalendar(metadata));
 		populate(value, request, actor, false);
 		value.setChangedBy(actor);
 		value.setDateChanged(new Date());
 		dao.save(value);
-		// Even a discarded or incomplete case must remove its previous contribution.
 		refreshCounts(actor);
-		return response(value);
+		SurveillanceCaseResponse response = response(value);
+		response.generatedAlerts = generateAlerts(value, previous, before, metadata);
+		return response;
 	}
 	
 	@Override

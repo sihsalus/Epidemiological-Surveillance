@@ -2,6 +2,8 @@ package org.openmrs.module.sihsalusepidemiologicalsurveillance.api.model;
 
 public class SurveillanceCaseResponse extends SurveillanceCaseRequest {
 	
+	public java.util.List<java.util.Map<String, Object>> generatedAlerts = new java.util.ArrayList<>();
+	
 	public String uuid;
 	
 	public String patientDeathDate;

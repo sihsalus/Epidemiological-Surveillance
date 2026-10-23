@@ -40,4 +40,5 @@
     <include file="liquibase-notification-time.xml"/>
     <include file="liquibase-notification-config.xml"/>
     <include file="liquibase-case-investigation-form.xml"/>
+    <include file="liquibase-alerts.xml"/>
 </databaseChangeLog>
