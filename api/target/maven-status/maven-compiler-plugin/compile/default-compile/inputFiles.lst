@@ -1,4 +1,6 @@
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\main\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\api\AggregateReportCalculator.java
+C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\main\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\api\AlertChanges.java
+C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\main\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\api\AlertRules.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\main\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\api\CaseObservations.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\main\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\api\CaseValidator.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\main\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\api\ClinicalCatalogService.java
@@ -6,11 +8,13 @@ C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\main\java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\main\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\api\db\HibernateSurveillanceDao.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\main\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\api\db\RecoverEmptySurveillanceSchema.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\main\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\api\db\SurveillanceDao.java
+C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\main\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\api\DeathAttributionSaveHandler.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\main\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\api\DemographicCalculator.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\main\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\api\EndemicChannel.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\main\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\api\EpidemiologicalCalendar.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\main\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\api\GeographicCalculator.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\main\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\api\impl\SurveillanceServiceImpl.java
+C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\main\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\api\IndicatorCalculator.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\main\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\api\model\AgeGroup.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\main\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\api\model\CaseRecord.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\main\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\api\model\CaseRequest.java
@@ -34,6 +38,7 @@ C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\main\java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\main\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\model\OutbreakAlert.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\main\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\model\OutbreakAlertRule.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\main\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\model\PeriodCaseCount.java
+C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\main\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\model\SurveillanceAlert.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\main\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\model\SurveillanceCase.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\main\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\SurveillanceActivator.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\main\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\SurveillanceConstants.java
