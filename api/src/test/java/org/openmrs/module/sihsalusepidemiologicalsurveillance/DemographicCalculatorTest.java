@@ -21,7 +21,7 @@ public class DemographicCalculatorTest {
 			assertEquals(DemographicCalculator.GROUPS.get(i / 2), DemographicCalculator.ageGroup(ages[i], groups));
 		assertEquals("UNKNOWN", DemographicCalculator.ageGroup(null, groups));
 		assertEquals("UNKNOWN", DemographicCalculator.ageGroup(-1, groups));
-		assertEquals("0,2,12,18,30,60", DemographicCalculator.validateGroups(groups));
+		assertEquals(6, DemographicCalculator.groups(DemographicCalculator.validateGroups(groups)).size());
 	}
 	
 	@Test
@@ -50,6 +50,29 @@ public class DemographicCalculatorTest {
 		}
 	}
 	
+	@Test
+	public void customNamesAndVariableGroupsRoundTripWithoutLosingUnicode() {
+		AgeGroup first = new AgeGroup("custom-1", 0, 17);
+		first.name = "Ni\u00f1os \uD83D\uDE00";
+		AgeGroup last = new AgeGroup("custom-2", 18, null);
+		last.name = "Adultos";
+		List<AgeGroup> restored = DemographicCalculator
+		        .groups(DemographicCalculator.validateGroups(Arrays.asList(first, last)));
+		assertEquals(first.name, restored.get(0).name);
+		assertEquals("custom-2", DemographicCalculator.ageGroup(18, restored));
+		last.minAge = 0;
+		assertEquals(1,
+		    DemographicCalculator.groups(DemographicCalculator.validateGroups(Collections.singletonList(last))).size());
+		last.name = " ";
+		try {
+			DemographicCalculator.validateGroups(Collections.singletonList(last));
+			fail("Blank name accepted");
+		}
+		catch (SurveillanceException ex) {
+			assertEquals("INVALID_AGE_GROUPS", ex.getCode());
+		}
+	}
+
 	private DemographicCalculator.Record record(Integer age, String sex, String disease, Boolean pregnant, String date) {
 		DemographicCalculator.Record value = new DemographicCalculator.Record();
 		value.age = age;

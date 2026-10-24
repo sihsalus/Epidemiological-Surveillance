@@ -13,6 +13,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public interface SurveillanceService extends OpenmrsService {
 	
+	@Authorized(SurveillanceConstants.MANAGE)
+	@Transactional(readOnly = true)
+	List<OutbreakRule> getOutbreakRules();
+
+	@Authorized(SurveillanceConstants.MANAGE)
+	List<OutbreakRule> saveOutbreakRules(List<OutbreakRule> rules);
+
 	@Transactional(readOnly = true)
 	List<Map<String, Object>> alerts(String type, String reason, String status);
 	

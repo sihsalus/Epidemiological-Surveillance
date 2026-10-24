@@ -3,6 +3,8 @@ package org.openmrs.module.sihsalusepidemiologicalsurveillance.api;
 import java.time.LocalDate;
 import java.util.*;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.openmrs.module.sihsalusepidemiologicalsurveillance.api.model.*;
 
 public class DemographicCalculator {
@@ -19,6 +21,16 @@ public class DemographicCalculator {
 	public static final String UNKNOWN = "UNKNOWN";
 	
 	public static List<AgeGroup> groups(String stored) {
+		if (stored != null && stored.trim().startsWith("[")) {
+			try {
+				List<AgeGroup> groups = new ObjectMapper().readValue(stored, new TypeReference<List<AgeGroup>>() {});
+				validateGroups(groups);
+				return groups;
+			}
+			catch (Exception ex) {
+				throw new SurveillanceException(422, "INVALID_AGE_GROUPS");
+			}
+		}
 		String[] bounds = (stored == null ? "0,2,12,18,30,60" : stored).split(",");
 		List<AgeGroup> result = new ArrayList<AgeGroup>();
 		try {
@@ -36,20 +48,27 @@ public class DemographicCalculator {
 	}
 	
 	public static String validateGroups(List<AgeGroup> groups) {
-		if (groups == null || groups.size() != GROUPS.size())
+		if (groups == null || groups.isEmpty())
 			throw new SurveillanceException(422, "INVALID_AGE_GROUPS");
 		long next = 0;
-		List<String> starts = new ArrayList<String>();
+		Set<String> keys = new HashSet<String>();
 		for (int i = 0; i < groups.size(); i++) {
 			AgeGroup group = groups.get(i);
-			if (group == null || !GROUPS.get(i).equals(group.key) || group.minAge == null || group.minAge != next
+			if (group == null || group.key == null || !group.key.matches("[A-Za-z0-9_-]+") || UNKNOWN.equals(group.key)
+			        || !keys.add(group.key)
+			        || (group.name == null ? !GROUPS.contains(group.key) : group.name.trim().isEmpty())
+			        || group.minAge == null || group.minAge != next
 			        || (i == groups.size() - 1 ? group.maxAge != null : group.maxAge == null || group.maxAge < group.minAge))
 				throw new SurveillanceException(422, "INVALID_AGE_GROUPS");
-			starts.add(String.valueOf(group.minAge));
 			if (group.maxAge != null)
 				next = (long) group.maxAge + 1;
 		}
-		return String.join(",", starts);
+		try {
+			return new ObjectMapper().writeValueAsString(groups);
+		}
+		catch (Exception ex) {
+			throw new SurveillanceException(422, "INVALID_AGE_GROUPS");
+		}
 	}
 	
 	public static String ageGroup(Integer age, List<AgeGroup> groups) {
@@ -179,7 +198,7 @@ public class DemographicCalculator {
 				result.put(key, key);
 		if ("ageGroup".equals(dimension))
 			for (AgeGroup group : groups)
-				result.put(group.key, group.key);
+				result.put(group.key, group.name == null ? group.key : group.name);
 		if ("sex".equals(dimension))
 			for (String key : Arrays.asList("F", "M", "OTHER"))
 				result.put(key, key);

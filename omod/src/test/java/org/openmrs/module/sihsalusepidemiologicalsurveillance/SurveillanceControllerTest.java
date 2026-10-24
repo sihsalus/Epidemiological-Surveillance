@@ -13,6 +13,33 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.web.controller.Sur
 public class SurveillanceControllerTest {
 	
 	@Test
+	public void outbreakConfigurationBindsTheCompleteRuleArray() throws Exception {
+		SurveillanceService service = mock(SurveillanceService.class);
+		SurveillanceController controller = new SurveillanceController();
+		controller.setService(service);
+		org.springframework.test.web.servlet.MockMvc mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders
+		        .standaloneSetup(controller).build();
+		String path = "/rest/v1/sihsalusepidemiologicalsurveillance/configuration/outbreak-rules";
+		mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(path))
+		        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk());
+		verify(service).getOutbreakRules();
+		mvc.perform(
+		    org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(path).contentType("application/json")
+		            .content("[{\"id\":\"a\",\"type\":\"CONSECUTIVE\",\"weeks\":1.5,\"percentile\":75}]"))
+		        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isBadRequest());
+		List<OutbreakRule> rules = OutbreakRuleSettings.defaults();
+		rules.get(1).weeks = 4;
+		rules.get(2).minimumCases = 2;
+		mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(path)
+		        .contentType("application/json").content(OutbreakRuleSettings.validate(rules)))
+		        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk());
+		org.mockito.ArgumentCaptor<List> capture = org.mockito.ArgumentCaptor.forClass(List.class);
+		verify(service).saveOutbreakRules(capture.capture());
+		assertEquals(Integer.valueOf(4), ((OutbreakRule) capture.getValue().get(1)).weeks);
+		assertEquals(Integer.valueOf(2), ((OutbreakRule) capture.getValue().get(2)).minimumCases);
+	}
+
+	@Test
 	public void alertRoutesBindFiltersAttendanceAndAuthorizedStream() throws Exception {
 		SurveillanceService service = mock(SurveillanceService.class);
 		SurveillanceController controller = new SurveillanceController();

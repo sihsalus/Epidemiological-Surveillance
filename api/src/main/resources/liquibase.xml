@@ -33,6 +33,7 @@
     <include file="liquibase-case-laboratory.xml"/>
     <include file="liquibase-case-snapshot.xml"/>
     <include file="liquibase-age-groups.xml"/>
+    <include file="liquibase-age-group-names.xml"/>
     <include file="liquibase-geography.xml"/>
     <include file="liquibase-coordinate-codes.xml"/>
     <include file="liquibase-endemic-config.xml"/>
@@ -41,4 +42,5 @@
     <include file="liquibase-notification-config.xml"/>
     <include file="liquibase-case-investigation-form.xml"/>
     <include file="liquibase-alerts.xml"/>
+    <include file="liquibase-outbreak-config.xml"/>
 </databaseChangeLog>

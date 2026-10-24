@@ -17,6 +17,23 @@ import org.springframework.beans.factory.annotation.Autowired;
 public class NativePersistenceTest extends BaseModuleContextSensitiveTest {
 	
 	@Test
+	public void outbreakRuleConfigurationSurvivesReload() {
+		org.openmrs.module.sihsalusepidemiologicalsurveillance.model.OutbreakRuleConfiguration config = new org.openmrs.module.sihsalusepidemiologicalsurveillance.model.OutbreakRuleConfiguration();
+		config.setUuid(org.openmrs.module.sihsalusepidemiologicalsurveillance.model.OutbreakRuleConfiguration.UUID);
+		java.util.List<org.openmrs.module.sihsalusepidemiologicalsurveillance.api.model.OutbreakRule> rules = org.openmrs.module.sihsalusepidemiologicalsurveillance.api.OutbreakRuleSettings
+		        .defaults();
+		rules.get(1).weeks = 3;
+		String stored = org.openmrs.module.sihsalusepidemiologicalsurveillance.api.OutbreakRuleSettings.validate(rules);
+		config.setRules(stored);
+		dao.save(config);
+		Context.flushSession();
+		Context.clearSession();
+		assertEquals(stored,
+		    dao.byUuid(org.openmrs.module.sihsalusepidemiologicalsurveillance.model.OutbreakRuleConfiguration.class,
+		        config.getUuid()).getRules());
+	}
+
+	@Test
 	public void endemicSettingsSurviveReload() {
 		Context.getAdministrationService().executeSQL(
 		    "create table if not exists surveillance_endemic_config (id int primary key, historical_years int, minimum_years int)",
@@ -91,11 +108,16 @@ public class NativePersistenceTest extends BaseModuleContextSensitiveTest {
 		config = dao.byUuid(org.openmrs.module.sihsalusepidemiologicalsurveillance.model.AgeGroupConfiguration.class,
 		    org.openmrs.module.sihsalusepidemiologicalsurveillance.model.AgeGroupConfiguration.UUID);
 		assertEquals("0,2,12,18,30,60", config.getLowerBounds());
-		config.setLowerBounds("0,3,12,18,30,60");
+		org.openmrs.module.sihsalusepidemiologicalsurveillance.api.model.AgeGroup custom = new org.openmrs.module.sihsalusepidemiologicalsurveillance.api.model.AgeGroup(
+		        "custom", 0, null);
+		custom.name = String.join("", java.util.Collections.nCopies(120, "Grupo \u00e9 "));
+		String stored = org.openmrs.module.sihsalusepidemiologicalsurveillance.api.DemographicCalculator
+		        .validateGroups(java.util.Collections.singletonList(custom));
+		config.setLowerBounds(stored);
 		dao.save(config);
 		Context.flushSession();
 		Context.clearSession();
-		assertEquals("0,3,12,18,30,60", dao
+		assertEquals(stored, dao
 		        .byUuid(org.openmrs.module.sihsalusepidemiologicalsurveillance.model.AgeGroupConfiguration.class,
 		            org.openmrs.module.sihsalusepidemiologicalsurveillance.model.AgeGroupConfiguration.UUID)
 		        .getLowerBounds());

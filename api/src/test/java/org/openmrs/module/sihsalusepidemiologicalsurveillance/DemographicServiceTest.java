@@ -232,7 +232,7 @@ public class DemographicServiceTest {
 		f.service.saveAgeGroups(groups);
 		verify(f.access).require(SurveillanceConstants.MANAGE);
 		verify(f.dao).save(config);
-		assertEquals("0,2,13,18,30,60", config.getLowerBounds());
+		assertEquals(Integer.valueOf(13), DemographicCalculator.groups(config.getLowerBounds()).get(2).minAge);
 		assertEquals("CHILDREN", DemographicCalculator.ageGroup(12, f.service.getAgeGroups()));
 		verify(f.dao, never()).save(any(SurveillanceCase.class));
 	}

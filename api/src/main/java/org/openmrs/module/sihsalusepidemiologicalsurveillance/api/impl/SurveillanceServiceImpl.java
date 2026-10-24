@@ -15,6 +15,32 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.*;
 
 public class SurveillanceServiceImpl extends BaseOpenmrsService implements SurveillanceService {
 	
+	private List<OutbreakRule> configuredOutbreakRules() {
+		OutbreakRuleConfiguration config = dao.byUuid(OutbreakRuleConfiguration.class, OutbreakRuleConfiguration.UUID);
+		return OutbreakRuleSettings.read(config == null ? null : config.getRules());
+	}
+
+	@Override
+	public List<OutbreakRule> getOutbreakRules() {
+		access.require(SurveillanceConstants.MANAGE);
+		return configuredOutbreakRules();
+	}
+
+	@Override
+	public List<OutbreakRule> saveOutbreakRules(List<OutbreakRule> rules) {
+		access.require(SurveillanceConstants.MANAGE);
+		String stored = OutbreakRuleSettings.validate(rules);
+		dao.lockAlerts();
+		OutbreakRuleConfiguration config = dao.byUuid(OutbreakRuleConfiguration.class, OutbreakRuleConfiguration.UUID);
+		if (config == null) {
+			config = new OutbreakRuleConfiguration();
+			config.setUuid(OutbreakRuleConfiguration.UUID);
+		}
+		config.setRules(stored);
+		dao.save(config);
+		return OutbreakRuleSettings.read(stored);
+	}
+
 	private ClinicalCatalog alertMetadata() {
 		ClinicalCatalog metadata = catalog.get();
 		int[] settings = dao.endemicSettings();
@@ -59,12 +85,13 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		Map<String, List<AlertRules.Snapshot>> after = alertSnapshots(metadata);
 		AlertRules.Snapshot current = AlertRules.Snapshot.of(value, new EpidemiologicalCalendar(metadata));
 		List<SurveillanceAlert> existing = dao.alerts();
+		List<OutbreakRule> rules = configuredOutbreakRules();
 		for (NotifiableEvent event : dao.events()) {
 			if (!alertEventMatches(event, value))
 				continue;
 			for (AlertRules.Trigger trigger : new AlertRules().evaluate(current, previous,
 			    before.getOrDefault(event.getUuid(), Collections.emptyList()),
-			    after.getOrDefault(event.getUuid(), Collections.emptyList()), event.getPeriodicity(), metadata)) {
+			    after.getOrDefault(event.getUuid(), Collections.emptyList()), event.getPeriodicity(), metadata, rules)) {
 				String key = event.getUuid() + ":" + trigger.reason + ":" + trigger.key;
 				// A→B→A→B are three distinct changes; identical PUT retries have no transition.
 				if ("STATUS_CHANGED".equals(trigger.reason))

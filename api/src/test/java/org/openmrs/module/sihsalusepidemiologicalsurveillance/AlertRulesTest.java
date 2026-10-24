@@ -145,4 +145,84 @@ public class AlertRulesTest {
 			when(user.hasPrivilege(privilege)).thenReturn(true);
 		}
 	}
+
+	@Test
+	public void customPercentilesAndIndependentRulesUseTheirOwnThresholds() {
+		List<Snapshot> before = new ArrayList<>();
+		for (int year = 2021; year <= 2025; year++)
+			for (int n = 0; n < year - 2020; n++)
+				before.add(record(week(year, 5)));
+		for (int n = 0; n < 3; n++)
+			before.add(record(week(2026, 5)));
+		Snapshot current = record(week(2026, 5));
+		List<Snapshot> after = new ArrayList<>(before);
+		after.add(current);
+		List<org.openmrs.module.sihsalusepidemiologicalsurveillance.api.model.OutbreakRule> rules = OutbreakRuleSettings
+		        .defaults();
+		rules.get(0).percentile = 50.0;
+		org.openmrs.module.sihsalusepidemiologicalsurveillance.api.model.OutbreakRule extra = OutbreakRuleSettings.defaults()
+		        .get(0);
+		extra.id = "another";
+		extra.percentile = 50.0;
+		rules.add(extra);
+		List<Trigger> triggers = new AlertRules().evaluate(current, null, before, after, "SEMANAL", metadata, rules);
+		assertEquals(2, triggers.size());
+		assertNotEquals(triggers.get(0).key, triggers.get(1).key);
+		rules.get(0).percentile = 100.0;
+		extra.percentile = 100.0;
+		assertTrue(new AlertRules().evaluate(current, null, before, after, "SEMANAL", metadata, rules).isEmpty());
+	}
+
+	@Test
+	public void threeConsecutiveWeeksCanBeCompletedByLateEntry() {
+		List<Snapshot> before = new ArrayList<>();
+		for (int n = 5; n <= 7; n++) {
+			before.addAll(history(n, 1));
+			before.add(record(week(2026, n)));
+			if (n > 5)
+				before.add(record(week(2026, n)));
+		}
+		Snapshot current = record(week(2026, 5));
+		List<Snapshot> after = new ArrayList<>(before);
+		after.add(current);
+		org.openmrs.module.sihsalusepidemiologicalsurveillance.api.model.OutbreakRule rule = OutbreakRuleSettings.defaults()
+		        .get(1);
+		rule.weeks = 3;
+		List<Trigger> triggers = new AlertRules().evaluate(current, null, before, after, "SEMANAL", metadata,
+		    Arrays.asList(rule));
+		assertEquals(1, triggers.size());
+		assertTrue(triggers.get(0).key.endsWith(week(2026, 7).toString()));
+		before.removeIf(s -> s.onset.equals(week(2026, 6)));
+		after.removeIf(s -> s.onset.equals(week(2026, 6)));
+		assertTrue(
+		    new AlertRules().evaluate(current, null, before, after, "SEMANAL", metadata, Arrays.asList(rule)).isEmpty());
+	}
+
+	@Test
+	public void focusRuleCountsSelectedOriginInOneWeekUsingClassificationBeforeWeek() {
+		Snapshot first = record(week(2026, 5)), second = record(week(2026, 5));
+		first.origin = second.origin = "AUTOCTONO";
+		org.openmrs.module.sihsalusepidemiologicalsurveillance.api.model.OutbreakRule rule = OutbreakRuleSettings.defaults()
+		        .get(2);
+		rule.minimumCases = 1;
+		assertEquals(1, new AlertRules().evaluate(second, null, Arrays.asList(first), Arrays.asList(first, second),
+		    "SEMANAL", metadata, Arrays.asList(rule)).size());
+		first.onset = week(2026, 4);
+		assertTrue(new AlertRules().evaluate(second, null, Arrays.asList(first), Arrays.asList(first, second), "SEMANAL",
+		    metadata, Arrays.asList(rule)).isEmpty());
+		rule.minimumCases = 0;
+		rule.focus = "ACTIVE";
+		rule.origin = "IMPORTADO_NACIONAL";
+		second.origin = "IMPORTADO_NACIONAL";
+		assertEquals("FOCUS_CASES", new AlertRules().evaluate(second, null, Arrays.asList(first),
+		    Arrays.asList(first, second), "SEMANAL", metadata, Arrays.asList(rule)).get(0).reason);
+		first.onset = week(2025, 4);
+		rule.focus = "RESIDUAL";
+		assertEquals(1, new AlertRules().evaluate(second, null, Arrays.asList(first), Arrays.asList(first, second),
+		    "SEMANAL", metadata, Arrays.asList(rule)).size());
+		first.origin = "UNKNOWN";
+		rule.focus = "ELIMINATED";
+		assertTrue(new AlertRules().evaluate(second, null, Arrays.asList(first), Arrays.asList(first, second), "SEMANAL",
+		    metadata, Arrays.asList(rule)).isEmpty());
+	}
 }

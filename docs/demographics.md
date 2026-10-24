@@ -28,7 +28,7 @@ etiquetas; no expone nombres, identificadores de pacientes o casos.
   antes de sumar, sin sumar también los agregados de distrito.
 - `GET /configuration/age-groups`: privilegio de acceso al módulo.
 - `PUT /configuration/age-groups`: privilegio `Vigilancia Epidemiologica: Configurar`.
-  Cuerpo: arreglo de seis objetos `{key, minAge, maxAge}` en orden; último máximo nulo.
+  Cuerpo: arreglo no vacío de objetos `{key, name, minAge, maxAge}` en orden; último máximo nulo.
 
 La respuesta demográfica incluye `rows`, `columns` (pares `key/label`), `values`
 (matriz), `rowTotals`, `columnTotals`, `total`, filtros de ejes/fechas/periodo,
@@ -62,7 +62,7 @@ configurado, que puede diferir del año de la fecha inicial; las claves siguen I
 ## Configuración persistida
 
 `liquibase-age-groups.xml` crea `surveillance_age_group_config` e inserta la
-configuración compartida. Los códigos son fijos, los límites editables:
+configuración compartida. Estos son los grupos iniciales; nombres, cantidad y límites son editables:
 
 | Código | Grupo | Inicial |
 | --- | --- | --- |
@@ -73,7 +73,7 @@ configuración compartida. Los códigos son fijos, los límites editables:
 | ADULTS | Adultos | 30–59 |
 | OLDER_ADULTS | Adultos mayores | 60 en adelante |
 
-Frontend y backend rechazan grupos faltantes, orden incorrecto, huecos,
+Frontend y backend rechazan listas vacías, claves duplicadas, nombres vacíos, huecos,
 solapamientos, rangos vacíos y máximo finito en el último grupo. La edición calcula
 los mínimos a partir del máximo anterior; el servidor vuelve a validar todo el
 arreglo. El cambio no modifica casos y afecta los reportes siguientes.
@@ -101,3 +101,13 @@ El smoke clínico en DEV/QLTY requiere una sesión coordinada y permanece pendie
 Validación local: `mvn package` completado con 115 pruebas de API y 6 de REST;
 frontend con 99 pruebas Vitest y una prueba HMR, comprobación TypeScript, lint y
 compilación Rspack correctos. No se realizó despliegue.
+
+
+`liquibase-age-group-names.xml` amplía `lower_bounds` a LONGTEXT para almacenar
+el arreglo JSON completo, incluidos nombres Unicode. No se establece un límite
+funcional por nombre ni se trunca texto. Se mantiene la lectura del formato legado
+de seis mínimos separados por comas; al guardar se escribe JSON. Un nombre ausente
+solo se admite para los códigos originales, cuya traducción mantiene el frontend.
+Claves personalizadas: letras ASCII, números, guion o guion bajo; UNKNOWN queda
+reservada. Renombrar conserva la clave; quitar un grupo redistribuye sus edades
+en la partición restante. Requiere OMOD y ESM actualizados conjuntamente.
