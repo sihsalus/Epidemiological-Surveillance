@@ -5,7 +5,7 @@ OMOD `io.github.proyecto-santaclotilde:sihsalusepidemiologicalsurveillance`, par
 ## Diseño vigente
 
 - Una sola base de datos OpenMRS; no hay réplica ni segundo datasource.
-- Persistencia de las siete tablas del modelo: `notifiable_event`, `outbreak_alert_rule`, `outbreak_alert`, `period_case_count`, `epidemiological_focus`, `surveillance_case` e `individual_record`.
+- El changelog activo incluye el [retiro de cinco tablas sin uso](docs/retiro-tablas-sin-uso.md) y de `surveillance_case.individual_record_id`. Las alertas se conservan en `surveillance_alert` y sus reglas en `surveillance_outbreak_config`. RF-15 mantiene la descarga del registro individual sin registrar la descarga ni persistir sus metadatos.
 - Los casos se guardan en `surveillance_case`; los datos del paciente se leen de `patient` y la gestación permanece como `Obs` del encuentro.
 - Los conteos se recalculan al registrar o actualizar casos y mediante una acción manual idempotente de configuración.
 - El componente no crea una tabla de auditoría ni se integra con NOTI-Web.
@@ -77,7 +77,18 @@ Además se requieren los privilegios clínicos nativos de OpenMRS para consultar
 
 ## Auditoría
 
-La auditoría corresponde al OMOD existente de auditoría clínica. Este repositorio no contiene ese OMOD, por lo que su API y la captura de cambios por campo no se han podido verificar localmente. El contrato de eventos que debe recibir y el punto pendiente de integración están en [docs/auditoria-integracion.md](docs/auditoria-integracion.md).
+RF-28 utiliza auditoría básica en las entidades, sin OMOD de auditoría ni retención
+obligatoria de 20 años. El contrato anterior de `docs/auditoria-integracion.md` queda
+obsoleto por el cambio de alcance del 28/10/2026.
+
+`OutbreakRuleConfiguration` y `AgeGroupConfiguration` registran `creator`,
+`date_created`, `changed_by` y `date_changed`. Los servicios toman el usuario de la
+autorización `MANAGE` y la fecha del servidor, conservan los datos de creación y
+actualizan los de última modificación en la misma transacción que la configuración.
+La migración incremental `liquibase-configuration-audit.xml` agrega las columnas y
+sus claves foráneas a `users`. Las filas anteriores conservan los metadatos de creación
+en NULL porque su autor y fecha originales se desconocen; las nuevas ediciones sí
+quedan atribuidas. Las configuraciones nuevas reciben autor y fecha al crearse.
 
 ## Desarrollo
 
