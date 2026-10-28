@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+ <!-- All data and incoming-FK checks run before DDL. No CASCADE or FK disabling.
+      MariaDB DDL is not atomic; a partial failure requires inspection, not MARK_RAN. -->
+ <changeSet id="surveillance-retire-unused-tables-20261028" author="sihsalus">
+  <customChange class="org.openmrs.module.sihsalusepidemiologicalsurveillance.api.db.VerifyUnusedSurveillanceTables"/>
+  <dropForeignKeyConstraint baseTableName="surveillance_case" constraintName="sc_record_fk"/>
+  <dropColumn tableName="surveillance_case" columnName="individual_record_id"/>
+  <dropTable tableName="outbreak_alert"/>
+  <dropTable tableName="outbreak_alert_rule"/>
+  <dropTable tableName="epidemiological_focus"/>
+  <dropTable tableName="individual_record"/>
+  <dropTable tableName="epidemiologysurveillance_item"/>
+ </changeSet>
+</databaseChangeLog>

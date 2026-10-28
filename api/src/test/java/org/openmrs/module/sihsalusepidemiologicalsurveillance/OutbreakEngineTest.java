@@ -28,18 +28,26 @@ public class OutbreakEngineTest {
 		return r;
 	}
 	
-	OutbreakAlertRule rule(String type) {
-		OutbreakAlertRule r = new OutbreakAlertRule();
-		r.setActive(true);
-		r.setConditionType(type);
-		r.setWindowWeeks(2);
+	OutbreakRule rule(String type) {
+		OutbreakRule r = new OutbreakRule();
+		r.id = "test";
+		if ("ELIMINATED_FOCUS".equals(type)) {
+			r.type = "FOCUS_CASES";
+			r.origin = "AUTOCTONO";
+			r.focus = "ELIMINATED";
+			r.minimumCases = 0;
+		} else {
+			r.type = "EPIDEMIC".equals(type) ? "THRESHOLD" : "CONSECUTIVE";
+			r.weeks = "THRESHOLD".equals(r.type) ? 1 : 2;
+			r.percentile = 75.0;
+		}
 		return r;
 	}
 	
-	EpidemiologicalFocus eliminated() {
-		EpidemiologicalFocus f = new EpidemiologicalFocus();
-		f.setClassification("eliminado");
-		f.setReceptive(false);
+	OutbreakEngine.FocusStatus eliminated() {
+		OutbreakEngine.FocusStatus f = new OutbreakEngine.FocusStatus();
+		f.classification = "ELIMINATED";
+		f.receptive = false;
 		return f;
 	}
 	
@@ -102,7 +110,7 @@ public class OutbreakEngineTest {
 		r.status = "SUSPECTED";
 		r.pregnant = true;
 		CaseResult result = new CaseResult();
-		engine.evaluate(r, null, Collections.<OutbreakAlertRule> emptyList(), records(0, 1), history(), m, result);
+		engine.evaluate(r, null, Collections.<OutbreakRule> emptyList(), records(0, 1), history(), m, result);
 		assertFalse(result.immediateAlerts.contains("CONFIRMED_PREGNANCY"));
 	}
 	
@@ -131,15 +139,15 @@ public class OutbreakEngineTest {
 	}
 	
 	@Test
-	public void twoIncreasingWeeksAtQ2TriggerSustainedAlert() {
+	public void twoWeeksAboveConfiguredPercentileTriggerSustainedAlert() {
 		CaseResult result = new CaseResult();
 		engine.evaluate(current(), null, Arrays.asList(rule("SUSTAINED")), records(2, 3), history(), m, result);
 		assertTrue(result.outbreakAlerts.contains("SUSTAINED_INCREASE"));
 	}
 	
 	@Test
-	public void flatOrDecliningWeeksDoNotTriggerSustainedAlert() {
-		for (int now : Arrays.asList(2, 1)) {
+	public void weeksAtOrBelowThresholdDoNotTriggerSustainedAlert() {
+		for (int now : Arrays.asList(0, 1)) {
 			CaseResult result = new CaseResult();
 			engine.evaluate(current(), null, Arrays.asList(rule("SUSTAINED")), records(2, now), history(), m, result);
 			assertTrue(result.outbreakAlerts.isEmpty());
@@ -159,11 +167,42 @@ public class OutbreakEngineTest {
 	}
 	
 	@Test
-	public void inactiveRuleDoesNotTrigger() {
-		OutbreakAlertRule rule = rule("ELIMINATED_FOCUS");
-		rule.setActive(false);
+	public void removedRuleDoesNotTrigger() {
 		CaseResult result = new CaseResult();
-		engine.evaluate(current(), eliminated(), Arrays.asList(rule), records(0, 1), history(), m, result);
+		engine.evaluate(current(), eliminated(), Collections.<OutbreakRule> emptyList(), records(0, 1), history(), m, result);
 		assertTrue(result.outbreakAlerts.isEmpty());
+	}
+
+	@Test
+	public void configuredMinimumCasesIsRespected() {
+		OutbreakRule rule = rule("ELIMINATED_FOCUS");
+		rule.minimumCases = 2;
+		CaseResult result = new CaseResult();
+		engine.evaluate(current(), eliminated(), Arrays.asList(rule), records(0, 2), history(), m, result);
+		assertTrue(result.outbreakAlerts.isEmpty());
+		engine.evaluate(current(), eliminated(), Arrays.asList(rule), records(0, 3), history(), m, result);
+		assertEquals(Arrays.asList("AUTOCHTHONOUS_ELIMINATED"), result.outbreakAlerts);
+	}
+
+	@Test
+	public void flatWeeksAboveThresholdMatchSharedConsecutiveRule() {
+		CaseResult result = new CaseResult();
+		engine.evaluate(current(), null, Arrays.asList(rule("SUSTAINED")), records(2, 2), history(), m, result);
+		assertTrue(result.outbreakAlerts.contains("SUSTAINED_INCREASE"));
+	}
+
+	@Test
+	public void configuredPercentileReplacesFixedQuartile() {
+		List<PeriodCaseCount> history = history();
+		for (int i = 0; i < history.size(); i++)
+			history.get(i).setCaseCount(i / 2);
+		OutbreakRule rule = rule("EPIDEMIC");
+		rule.percentile = 100.0;
+		CaseResult result = new CaseResult();
+		engine.evaluate(current(), null, Arrays.asList(rule), records(0, 3), history, m, result);
+		assertTrue(result.outbreakAlerts.isEmpty());
+		rule.percentile = 50.0;
+		engine.evaluate(current(), null, Arrays.asList(rule), records(0, 3), history, m, result);
+		assertTrue(result.outbreakAlerts.contains("EPIDEMIC_THRESHOLD"));
 	}
 }

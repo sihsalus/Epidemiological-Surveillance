@@ -8,18 +8,26 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.*;
 
 public class OutbreakEngine {
 	
-	public void evaluate(CaseRecord current, EpidemiologicalFocus focus, List<OutbreakAlertRule> rules,
-	        List<CaseRecord> recent, List<PeriodCaseCount> history, ClinicalCatalog m, CaseResult result) {
+	/** Calculated compatibility value; not a persistent entity. */
+	public static class FocusStatus {
+
+		public String classification;
+
+		public Boolean receptive;
+	}
+
+	public void evaluate(CaseRecord current, FocusStatus focus, List<OutbreakRule> rules, List<CaseRecord> recent,
+	        List<PeriodCaseCount> history, ClinicalCatalog m, CaseResult result) {
 		if ("DISCARDED".equals(current.status))
 			return;
-		boolean eliminated = focus != null && "eliminado".equals(focus.getClassification());
+		boolean eliminated = focus != null && "ELIMINATED".equals(focus.classification);
 		if ("SEVERE".equals(current.severity))
 			result.immediateAlerts.add("SEVERE_CASE");
 		if (current.deceased)
 			result.immediateAlerts.add("DEATH");
 		if (eliminated)
 			result.immediateAlerts.add("ELIMINATED_FOCUS");
-		if (focus != null && Boolean.FALSE.equals(focus.getReceptive()))
+		if (focus != null && Boolean.FALSE.equals(focus.receptive))
 			result.immediateAlerts.add("NON_RECEPTIVE_FOCUS");
 		if (Boolean.TRUE.equals(current.pregnant) && "CONFIRMED".equals(current.status))
 			result.immediateAlerts.add("CONFIRMED_PREGNANCY");
@@ -32,39 +40,39 @@ public class OutbreakEngine {
 		EpidemiologicalCalendar calendar = new EpidemiologicalCalendar(m);
 		LocalDate week = calendar.start(current.onset, "semana");
 		EndemicChannel channel = new EndemicChannel();
-		for (OutbreakAlertRule rule : rules) {
-			if (!Boolean.TRUE.equals(rule.getActive()))
-				continue;
-			if ("ELIMINATED_FOCUS".equals(rule.getConditionType())) {
-				if (eliminated && "AUTOCHTHONOUS".equals(current.origin))
-					result.outbreakAlerts.add("AUTOCHTHONOUS_ELIMINATED");
-			} else if ("EPIDEMIC".equals(rule.getConditionType())) {
+		for (OutbreakRule rule : rules) {
+			if ("FOCUS_CASES".equals(rule.type)) {
+				if (focus != null && rule.focus.equals(focus.classification) && rule.origin.equals(origin(current.origin))
+				        && countOrigin(recent, current.eventUuid, week, week.plusWeeks(1), rule.origin) > rule.minimumCases)
+					result.outbreakAlerts.add(eliminated && "AUTOCTONO".equals(rule.origin) ? "AUTOCHTHONOUS_ELIMINATED"
+					        : "FOCUS_CASES");
+			} else if ("THRESHOLD".equals(rule.type)) {
 				List<Integer> sample = ReportCalculator.history(history, calendar.year(week, "semana"),
 				    calendar.number(week, "semana"), m);
 				int count = count(recent, current.eventUuid, week, week.plusWeeks(1));
-				EndemicChannel.Thresholds thresholds = channel.evaluate(sample, count, m.minimumHistoricalYears);
-				if (thresholds.q3 == null)
+				Double threshold = sample.size() < m.minimumHistoricalYears ? null : channel.quantile(sample,
+				    rule.percentile / 100.0);
+				if (threshold == null)
 					warnHistory(result);
-				else if (count > thresholds.q3 && count - 1 <= thresholds.q3)
+				else if (count > threshold && count - 1 <= threshold)
 					result.outbreakAlerts.add("EPIDEMIC_THRESHOLD");
-			} else if ("SUSTAINED".equals(rule.getConditionType())) {
-				int window = rule.getWindowWeeks() == null ? 2 : rule.getWindowWeeks();
-				if (window < 2 || window > 12)
+			} else if ("CONSECUTIVE".equals(rule.type)) {
+				int window = rule.weeks;
+				if (window < 1 || window > 53)
 					throw new SurveillanceException(503, "INVALID_OUTBREAK_RULE");
 				boolean sustained = true;
-				int previous = -1;
 				for (int offset = window - 1; offset >= 0; offset--) {
 					LocalDate date = week.minusWeeks(offset);
 					int count = count(recent, current.eventUuid, date, date.plusWeeks(1));
 					List<Integer> sample = ReportCalculator.history(history, calendar.year(date, "semana"),
 					    calendar.number(date, "semana"), m);
-					EndemicChannel.Thresholds thresholds = channel.evaluate(sample, count, m.minimumHistoricalYears);
-					if (thresholds.q2 == null) {
+					Double threshold = sample.size() < m.minimumHistoricalYears ? null : channel.quantile(sample,
+					    rule.percentile / 100.0);
+					if (threshold == null) {
 						sustained = false;
 						warnHistory(result);
-					} else if (count < thresholds.q2 || count == 0 || (previous >= 0 && count <= previous))
+					} else if (count <= threshold)
 						sustained = false;
-					previous = count;
 				}
 				if (sustained)
 					result.outbreakAlerts.add("SUSTAINED_INCREASE");
@@ -85,5 +93,24 @@ public class OutbreakEngine {
 	private void warnHistory(CaseResult result) {
 		if (!result.warnings.contains("INSUFFICIENT_HISTORY"))
 			result.warnings.add("INSUFFICIENT_HISTORY");
+	}
+
+	private String origin(String value) {
+		String[] legacy = { "AUTOCHTHONOUS", "IMPORTED_NATIONAL", "IMPORTED_INTERNATIONAL", "INDUCED", "INTRODUCED",
+		        "RELAPSE", "RECRUDESCENCE" };
+		String[] current = { "AUTOCTONO", "IMPORTADO_NACIONAL", "IMPORTADO_INTERNACIONAL", "INDUCIDO", "INTRODUCIDO",
+		        "RECAIDA", "RECRUDESCENCIA" };
+		for (int i = 0; i < legacy.length; i++)
+			if (legacy[i].equals(value))
+				return current[i];
+		return value;
+	}
+
+	private int countOrigin(List<CaseRecord> records, String event, LocalDate start, LocalDate end, String origin) {
+		List<CaseRecord> matching = new ArrayList<>();
+		for (CaseRecord record : records)
+			if (origin.equals(origin(record.origin)))
+				matching.add(record);
+		return count(matching, event, start, end);
 	}
 }

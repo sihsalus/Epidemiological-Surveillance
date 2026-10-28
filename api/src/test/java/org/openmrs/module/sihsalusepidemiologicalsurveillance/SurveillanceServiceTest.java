@@ -104,8 +104,8 @@ public class SurveillanceServiceTest {
 	@Test
 	public void reportRejectsUnsupportedGeographyAndDiscardedFilter() {
 		SyntheticFixture f = new SyntheticFixture();
-		for (String[] selection : Arrays.asList(new String[] { "INVALID", "TODOS", "INVALID_ZONE_LEVEL" },
-		    new String[] { "DISTRITO", "DESCARTADO", "INVALID_DIAGNOSIS_TYPE" })) {
+		for (String[] selection : Arrays.asList(new String[] { "INVALID", "TODOS", "INVALID_ZONE_LEVEL" }, new String[] {
+		        "DISTRITO", "DESCARTADO", "INVALID_DIAGNOSIS_TYPE" })) {
 			try {
 				f.service.report(f.event.getUuid(), "2026-01-01", "2026-01-03", "dia", selection[0], null, selection[1]);
 				fail();
@@ -118,7 +118,7 @@ public class SurveillanceServiceTest {
 	}
 	
 	@Test
-	public void draftPersistsEveryCaseAttributeAndLeavesIndividualRecordUnset() {
+	public void draftPersistsEveryCaseAttribute() {
 		SyntheticFixture f = new SyntheticFixture();
 		f.surveillanceRequest.infectionAddressUuid = SyntheticFixture.uuid(92);
 		when(f.dao.populatedCenterId(f.surveillanceRequest.infectionAddressUuid)).thenReturn(92);
@@ -138,7 +138,6 @@ public class SurveillanceServiceTest {
 		assertEquals("PROBABLE", saved.getDiagnosisType());
 		assertEquals("IGN", saved.getVaccinationStatus());
 		assertEquals("PASIVA", saved.getSurveillanceType());
-		assertNull(saved.getIndividualRecord());
 		verify(f.dao).replaceCounts(eq(f.event), anyList());
 	}
 	

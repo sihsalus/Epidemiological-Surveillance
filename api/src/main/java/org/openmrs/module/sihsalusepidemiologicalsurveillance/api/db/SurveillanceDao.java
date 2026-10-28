@@ -48,10 +48,6 @@ public interface SurveillanceDao {
 	
 	NotifiableEvent eventByConcept(org.openmrs.Concept concept);
 	
-	List<OutbreakAlertRule> rules(NotifiableEvent event);
-	
-	EpidemiologicalFocus focus(NotifiableEvent event, String locationUuid);
-	
 	List<PeriodCaseCount> counts(NotifiableEvent event, String period, int fromYear, int toYear);
 	
 	List<PeriodCaseCount> counts(NotifiableEvent event, String period, int fromYear, int toYear, String zoneLevel,

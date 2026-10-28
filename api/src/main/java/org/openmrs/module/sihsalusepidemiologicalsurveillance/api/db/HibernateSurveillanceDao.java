@@ -20,9 +20,8 @@ public class HibernateSurveillanceDao implements SurveillanceDao {
 			return null;
 		org.openmrs.User user = byUuid(org.openmrs.User.class, reference);
 		// Older alerts stored a username instead of the stable UUID.
-		return user != null ? user
-		        : (org.openmrs.User) sessionFactory.getCurrentSession().createCriteria(org.openmrs.User.class)
-		                .add(Restrictions.eq("username", reference)).uniqueResult();
+		return user != null ? user : (org.openmrs.User) sessionFactory.getCurrentSession()
+		        .createCriteria(org.openmrs.User.class).add(Restrictions.eq("username", reference)).uniqueResult();
 	}
 	
 	@Override
@@ -33,8 +32,8 @@ public class HibernateSurveillanceDao implements SurveillanceDao {
 	@Override
 	@SuppressWarnings("unchecked")
 	public List<SurveillanceAlert> alerts() {
-		return sessionFactory.getCurrentSession().createCriteria(SurveillanceAlert.class).addOrder(Order.desc("generatedAt"))
-		        .addOrder(Order.desc("id")).list();
+		return sessionFactory.getCurrentSession().createCriteria(SurveillanceAlert.class)
+		        .addOrder(Order.desc("generatedAt")).addOrder(Order.desc("id")).list();
 	}
 	
 	@Override
@@ -53,7 +52,8 @@ public class HibernateSurveillanceDao implements SurveillanceDao {
 	
 	@Override
 	public void lockEventConcept(org.openmrs.Concept concept) {
-		sessionFactory.getCurrentSession().createSQLQuery("select concept_id from concept where concept_id = :id for update")
+		sessionFactory.getCurrentSession()
+		        .createSQLQuery("select concept_id from concept where concept_id = :id for update")
 		        .setInteger("id", concept.getId()).uniqueResult();
 	}
 	
@@ -62,14 +62,16 @@ public class HibernateSurveillanceDao implements SurveillanceDao {
 		Object[] row = (Object[]) sessionFactory.getCurrentSession()
 		        .createSQLQuery("select weekday, hour, minute from surveillance_notification_config where id = 1")
 		        .uniqueResult();
-		return row == null ? null
-		        : new int[] { ((Number) row[0]).intValue(), ((Number) row[1]).intValue(), ((Number) row[2]).intValue() };
+		return row == null ? null : new int[] { ((Number) row[0]).intValue(), ((Number) row[1]).intValue(),
+		        ((Number) row[2]).intValue() };
 	}
 	
 	@Override
 	public void saveNotificationSettings(int day, int hour, int minute) {
-		sessionFactory.getCurrentSession().createSQLQuery(
-		    "update surveillance_notification_config set weekday = :day, hour = :hour, minute = :minute where id = 1")
+		sessionFactory
+		        .getCurrentSession()
+		        .createSQLQuery(
+		            "update surveillance_notification_config set weekday = :day, hour = :hour, minute = :minute where id = 1")
 		        .setInteger("day", day).setInteger("hour", hour).setInteger("minute", minute).executeUpdate();
 	}
 	
@@ -83,8 +85,10 @@ public class HibernateSurveillanceDao implements SurveillanceDao {
 	
 	@Override
 	public void saveEndemicSettings(int years, int minimum) {
-		sessionFactory.getCurrentSession().createSQLQuery(
-		    "update surveillance_endemic_config set historical_years = :years, minimum_years = :minimum where id = 1")
+		sessionFactory
+		        .getCurrentSession()
+		        .createSQLQuery(
+		            "update surveillance_endemic_config set historical_years = :years, minimum_years = :minimum where id = 1")
 		        .setInteger("years", years).setInteger("minimum", minimum).executeUpdate();
 	}
 	
@@ -105,26 +109,28 @@ public class HibernateSurveillanceDao implements SurveillanceDao {
 	@Override
 	@SuppressWarnings("unchecked")
 	public List<Object[]> populatedCenterCodes() {
-		return sessionFactory.getCurrentSession().createSQLQuery(
-		    "select e.address_hierarchy_entry_id, e.user_generated_id from address_hierarchy_entry e join address_hierarchy_level l on l.address_hierarchy_level_id = e.level_id where l.address_field = 'CITY_VILLAGE'")
+		return sessionFactory
+		        .getCurrentSession()
+		        .createSQLQuery(
+		            "select e.address_hierarchy_entry_id, e.user_generated_id from address_hierarchy_entry e join address_hierarchy_level l on l.address_hierarchy_level_id = e.level_id where l.address_field = 'CITY_VILLAGE'")
 		        .list();
 	}
 	
 	@Override
 	@SuppressWarnings("unchecked")
 	public List<Object[]> centerCoordinates() {
-		List<Object[]> result = new java.util.ArrayList<Object[]>(
-		        sessionFactory.getCurrentSession()
-		                .createSQLQuery(
-		                    "select address_hierarchy_entry_id, latitude, longitude from surveillance_center_coordinates")
-		                .list());
+		List<Object[]> result = new java.util.ArrayList<Object[]>(sessionFactory
+		        .getCurrentSession()
+		        .createSQLQuery(
+		            "select address_hierarchy_entry_id, latitude, longitude from surveillance_center_coordinates").list());
 		// Resolve codes at read time, including centers added to the territorial catalog after an import.
-		result.addAll(sessionFactory.getCurrentSession().createSQLQuery(
-		    "select c.id, s.latitude, s.longitude from surveillance_coordinate_codes s join "
-		            + "(select e.user_generated_id as code, min(e.address_hierarchy_entry_id) as id from address_hierarchy_entry e "
-		            + "join address_hierarchy_level l on l.address_hierarchy_level_id = e.level_id where l.address_field = 'CITY_VILLAGE' "
-		            + "group by e.user_generated_id having count(*) = 1) c on c.code = s.center_code")
-		        .list());
+		result.addAll(sessionFactory
+		        .getCurrentSession()
+		        .createSQLQuery(
+		            "select c.id, s.latitude, s.longitude from surveillance_coordinate_codes s join "
+		                    + "(select e.user_generated_id as code, min(e.address_hierarchy_entry_id) as id from address_hierarchy_entry e "
+		                    + "join address_hierarchy_level l on l.address_hierarchy_level_id = e.level_id where l.address_field = 'CITY_VILLAGE' "
+		                    + "group by e.user_generated_id having count(*) = 1) c on c.code = s.center_code").list());
 		return result;
 	}
 	
@@ -135,8 +141,7 @@ public class HibernateSurveillanceDao implements SurveillanceDao {
 		Object existing = sessionFactory.getCurrentSession()
 		        .createSQLQuery("select center_code from surveillance_coordinate_codes where center_code = :code")
 		        .setString("code", code).uniqueResult();
-		String sql = existing == null
-		        ? "insert into surveillance_coordinate_codes (center_code, latitude, longitude) values (:code, :lat, :lon)"
+		String sql = existing == null ? "insert into surveillance_coordinate_codes (center_code, latitude, longitude) values (:code, :lat, :lon)"
 		        : "update surveillance_coordinate_codes set latitude = :lat, longitude = :lon where center_code = :code";
 		sessionFactory.getCurrentSession().createSQLQuery(sql).setString("code", code).setDouble("lat", latitude)
 		        .setDouble("lon", longitude).executeUpdate();
@@ -147,16 +152,22 @@ public class HibernateSurveillanceDao implements SurveillanceDao {
 		// Serialize imports using the singleton configuration row; the service transaction covers the entire file.
 		sessionFactory.getCurrentSession().createSQLQuery("select id from surveillance_risk_config where id = 1 for update")
 		        .uniqueResult();
-		Object existing = sessionFactory.getCurrentSession().createSQLQuery(
-		    "select address_hierarchy_entry_id from surveillance_center_coordinates where address_hierarchy_entry_id = :id")
+		Object existing = sessionFactory
+		        .getCurrentSession()
+		        .createSQLQuery(
+		            "select address_hierarchy_entry_id from surveillance_center_coordinates where address_hierarchy_entry_id = :id")
 		        .setInteger("id", id).uniqueResult();
 		if (existing != null)
-			sessionFactory.getCurrentSession().createSQLQuery(
-			    "update surveillance_center_coordinates set latitude = :lat, longitude = :lon where address_hierarchy_entry_id = :id")
+			sessionFactory
+			        .getCurrentSession()
+			        .createSQLQuery(
+			            "update surveillance_center_coordinates set latitude = :lat, longitude = :lon where address_hierarchy_entry_id = :id")
 			        .setDouble("lat", latitude).setDouble("lon", longitude).setInteger("id", id).executeUpdate();
 		else
-			sessionFactory.getCurrentSession().createSQLQuery(
-			    "insert into surveillance_center_coordinates (address_hierarchy_entry_id, latitude, longitude) values (:id, :lat, :lon)")
+			sessionFactory
+			        .getCurrentSession()
+			        .createSQLQuery(
+			            "insert into surveillance_center_coordinates (address_hierarchy_entry_id, latitude, longitude) values (:id, :lat, :lon)")
 			        .setDouble("lat", latitude).setDouble("lon", longitude).setInteger("id", id).executeUpdate();
 	}
 	
@@ -176,8 +187,8 @@ public class HibernateSurveillanceDao implements SurveillanceDao {
 	
 	@Override
 	public <T extends BaseOpenmrsObject> T byUuid(Class<T> type, String uuid) {
-		return type.cast(
-		    sessionFactory.getCurrentSession().createCriteria(type).add(Restrictions.eq("uuid", uuid)).uniqueResult());
+		return type.cast(sessionFactory.getCurrentSession().createCriteria(type).add(Restrictions.eq("uuid", uuid))
+		        .uniqueResult());
 	}
 	
 	@Override
@@ -190,19 +201,6 @@ public class HibernateSurveillanceDao implements SurveillanceDao {
 	public NotifiableEvent eventByConcept(org.openmrs.Concept concept) {
 		return (NotifiableEvent) sessionFactory.getCurrentSession().createCriteria(NotifiableEvent.class)
 		        .add(Restrictions.eq("concept", concept)).uniqueResult();
-	}
-	
-	@Override
-	@SuppressWarnings("unchecked")
-	public List<OutbreakAlertRule> rules(NotifiableEvent event) {
-		return sessionFactory.getCurrentSession().createCriteria(OutbreakAlertRule.class)
-		        .add(Restrictions.eq("event", event)).add(Restrictions.eq("active", true)).list();
-	}
-	
-	@Override
-	public EpidemiologicalFocus focus(NotifiableEvent event, String locationUuid) {
-		// Foci are keyed by Address Hierarchy entries, not service locations. RF-21 is out of scope.
-		return null;
 	}
 	
 	@Override
@@ -262,7 +260,8 @@ public class HibernateSurveillanceDao implements SurveillanceDao {
 	
 	@Override
 	public void lockEvent(NotifiableEvent event) {
-		sessionFactory.getCurrentSession()
+		sessionFactory
+		        .getCurrentSession()
 		        .createSQLQuery(
 		            "select notifiable_event_id from notifiable_event where notifiable_event_id = :id for update")
 		        .setInteger("id", event.getId()).uniqueResult();
@@ -271,45 +270,54 @@ public class HibernateSurveillanceDao implements SurveillanceDao {
 	
 	@Override
 	public void lockPatient(Patient patient) {
-		sessionFactory.getCurrentSession().createSQLQuery("select patient_id from patient where patient_id = :id for update")
+		sessionFactory.getCurrentSession()
+		        .createSQLQuery("select patient_id from patient where patient_id = :id for update")
 		        .setInteger("id", patient.getId()).uniqueResult();
 	}
 	
 	@Override
 	@SuppressWarnings("unchecked")
 	public List<Encounter> encounters(Date from, Date to, String onset) {
-		return sessionFactory.getCurrentSession().createQuery(
-		    "select distinct e from Diagnosis d join d.encounter e join e.obs o where d.voided = false and e.voided = false "
-		            + "and e.patient.voided = false and o.voided = false "
-		            + "and o.concept.uuid = :onset and o.valueDatetime >= :from and o.valueDatetime < :to")
+		return sessionFactory
+		        .getCurrentSession()
+		        .createQuery(
+		            "select distinct e from Diagnosis d join d.encounter e join e.obs o where d.voided = false and e.voided = false "
+		                    + "and e.patient.voided = false and o.voided = false "
+		                    + "and o.concept.uuid = :onset and o.valueDatetime >= :from and o.valueDatetime < :to")
 		        .setString("onset", onset).setTimestamp("from", from).setTimestamp("to", to).list();
 	}
 	
 	@Override
 	@SuppressWarnings("unchecked")
 	public List<Encounter> possibleDuplicates(Patient patient, List<String> diagnoses, Date from, Date to, String onset) {
-		return sessionFactory.getCurrentSession()
-		        .createQuery("select distinct d.encounter from Diagnosis d, Obs o "
-		                + "where d.encounter = o.encounter and d.voided = false and d.encounter.voided = false "
-		                + "and d.encounter.patient = :patient "
-		                + "and d.diagnosis.coded.uuid in (:diagnoses) and o.voided = false and o.concept.uuid = :onset "
-		                + "and o.valueDatetime >= :from and o.valueDatetime < :to")
-		        .setParameter("patient", patient).setParameterList("diagnoses", diagnoses).setString("onset", onset)
-		        .setTimestamp("from", from).setTimestamp("to", to).list();
+		return sessionFactory
+		        .getCurrentSession()
+		        .createQuery(
+		            "select distinct d.encounter from Diagnosis d, Obs o "
+		                    + "where d.encounter = o.encounter and d.voided = false and d.encounter.voided = false "
+		                    + "and d.encounter.patient = :patient "
+		                    + "and d.diagnosis.coded.uuid in (:diagnoses) and o.voided = false and o.concept.uuid = :onset "
+		                    + "and o.valueDatetime >= :from and o.valueDatetime < :to").setParameter("patient", patient)
+		        .setParameterList("diagnoses", diagnoses).setString("onset", onset).setTimestamp("from", from)
+		        .setTimestamp("to", to).list();
 	}
 	
 	@Override
 	public Integer populatedCenterId(String uuid) {
-		Object value = sessionFactory.getCurrentSession().createSQLQuery(
-		    "select e.address_hierarchy_entry_id from address_hierarchy_entry e join address_hierarchy_level l on l.address_hierarchy_level_id = e.level_id where e.uuid = :uuid and l.address_field = 'CITY_VILLAGE'")
+		Object value = sessionFactory
+		        .getCurrentSession()
+		        .createSQLQuery(
+		            "select e.address_hierarchy_entry_id from address_hierarchy_entry e join address_hierarchy_level l on l.address_hierarchy_level_id = e.level_id where e.uuid = :uuid and l.address_field = 'CITY_VILLAGE'")
 		        .setString("uuid", uuid).uniqueResult();
 		return value == null ? null : ((Number) value).intValue();
 	}
 	
 	@Override
 	public Integer districtIdForPopulatedCenter(Integer populatedCenterId) {
-		Object value = sessionFactory.getCurrentSession().createSQLQuery(
-		    "select p.address_hierarchy_entry_id from address_hierarchy_entry e join address_hierarchy_entry p on p.address_hierarchy_entry_id = e.parent_id join address_hierarchy_level l on l.address_hierarchy_level_id = p.level_id where e.address_hierarchy_entry_id = :id and l.address_field = 'COUNTY_DISTRICT'")
+		Object value = sessionFactory
+		        .getCurrentSession()
+		        .createSQLQuery(
+		            "select p.address_hierarchy_entry_id from address_hierarchy_entry e join address_hierarchy_entry p on p.address_hierarchy_entry_id = e.parent_id join address_hierarchy_level l on l.address_hierarchy_level_id = p.level_id where e.address_hierarchy_entry_id = :id and l.address_field = 'COUNTY_DISTRICT'")
 		        .setInteger("id", populatedCenterId).uniqueResult();
 		return value == null ? null : ((Number) value).intValue();
 	}
@@ -325,7 +333,8 @@ public class HibernateSurveillanceDao implements SurveillanceDao {
 	public List<SurveillanceCase> weeklyCases(Date from, Date to) {
 		return sessionFactory.getCurrentSession().createCriteria(SurveillanceCase.class)
 		        .add(Restrictions.eq("voided", false)).add(Restrictions.ge("notificationDate", from))
-		        .add(Restrictions.lt("notificationDate", to)).addOrder(org.hibernate.criterion.Order.asc("notificationDate"))
+		        .add(Restrictions.lt("notificationDate", to))
+		        .addOrder(org.hibernate.criterion.Order.asc("notificationDate"))
 		        .addOrder(org.hibernate.criterion.Order.asc("id")).list();
 	}
 	
@@ -345,8 +354,10 @@ public class HibernateSurveillanceDao implements SurveillanceDao {
 	
 	@Override
 	public String addressDisplay(Integer id) {
-		Object[] row = (Object[]) sessionFactory.getCurrentSession().createSQLQuery(
-		    "select dep.name as department_name, p.name as province_name, d.name as district_name, c.name as populated_center_name from address_hierarchy_entry c left join address_hierarchy_entry d on d.address_hierarchy_entry_id = c.parent_id left join address_hierarchy_entry p on p.address_hierarchy_entry_id = d.parent_id left join address_hierarchy_entry dep on dep.address_hierarchy_entry_id = p.parent_id where c.address_hierarchy_entry_id = :id")
+		Object[] row = (Object[]) sessionFactory
+		        .getCurrentSession()
+		        .createSQLQuery(
+		            "select dep.name as department_name, p.name as province_name, d.name as district_name, c.name as populated_center_name from address_hierarchy_entry c left join address_hierarchy_entry d on d.address_hierarchy_entry_id = c.parent_id left join address_hierarchy_entry p on p.address_hierarchy_entry_id = d.parent_id left join address_hierarchy_entry dep on dep.address_hierarchy_entry_id = p.parent_id where c.address_hierarchy_entry_id = :id")
 		        .setInteger("id", id).uniqueResult();
 		if (row == null)
 			return null;
@@ -358,7 +369,8 @@ public class HibernateSurveillanceDao implements SurveillanceDao {
 	public String addressCode(Integer id) {
 		if (id == null)
 			return null;
-		Object code = sessionFactory.getCurrentSession()
+		Object code = sessionFactory
+		        .getCurrentSession()
 		        .createSQLQuery(
 		            "select user_generated_id from address_hierarchy_entry where address_hierarchy_entry_id = :id")
 		        .setInteger("id", id).uniqueResult();
@@ -367,16 +379,17 @@ public class HibernateSurveillanceDao implements SurveillanceDao {
 	
 	@Override
 	public String residenceCode(String department, String province, String district, String locality) {
-		List<?> codes = sessionFactory.getCurrentSession()
-		        .createSQLQuery("select c.user_generated_id from address_hierarchy_entry c "
-		                + "join address_hierarchy_level l on l.address_hierarchy_level_id = c.level_id "
-		                + "join address_hierarchy_entry d on d.address_hierarchy_entry_id = c.parent_id "
-		                + "join address_hierarchy_entry p on p.address_hierarchy_entry_id = d.parent_id "
-		                + "join address_hierarchy_entry dep on dep.address_hierarchy_entry_id = p.parent_id "
-		                + "where l.address_field = 'CITY_VILLAGE' and dep.name = :department and p.name = :province "
-		                + "and d.name = :district and c.name = :locality")
-		        .setString("department", department).setString("province", province).setString("district", district)
-		        .setString("locality", locality).list();
+		List<?> codes = sessionFactory
+		        .getCurrentSession()
+		        .createSQLQuery(
+		            "select c.user_generated_id from address_hierarchy_entry c "
+		                    + "join address_hierarchy_level l on l.address_hierarchy_level_id = c.level_id "
+		                    + "join address_hierarchy_entry d on d.address_hierarchy_entry_id = c.parent_id "
+		                    + "join address_hierarchy_entry p on p.address_hierarchy_entry_id = d.parent_id "
+		                    + "join address_hierarchy_entry dep on dep.address_hierarchy_entry_id = p.parent_id "
+		                    + "where l.address_field = 'CITY_VILLAGE' and dep.name = :department and p.name = :province "
+		                    + "and d.name = :district and c.name = :locality").setString("department", department)
+		        .setString("province", province).setString("district", district).setString("locality", locality).list();
 		return codes.size() == 1 && codes.get(0) != null ? codes.get(0).toString() : null;
 	}
 	
@@ -385,8 +398,10 @@ public class HibernateSurveillanceDao implements SurveillanceDao {
 		Integer current = populatedCenterId;
 		java.util.Set<Integer> visited = new java.util.HashSet<Integer>();
 		while (current != null && visited.add(current)) {
-			Object[] row = (Object[]) sessionFactory.getCurrentSession().createSQLQuery(
-			    "select e.parent_id, l.address_field from address_hierarchy_entry e join address_hierarchy_level l on l.address_hierarchy_level_id = e.level_id where e.address_hierarchy_entry_id = :id")
+			Object[] row = (Object[]) sessionFactory
+			        .getCurrentSession()
+			        .createSQLQuery(
+			            "select e.parent_id, l.address_field from address_hierarchy_entry e join address_hierarchy_level l on l.address_hierarchy_level_id = e.level_id where e.address_hierarchy_entry_id = :id")
 			        .setInteger("id", current).uniqueResult();
 			if (row == null)
 				return null;
@@ -407,8 +422,10 @@ public class HibernateSurveillanceDao implements SurveillanceDao {
 	
 	@Override
 	public Integer addressId(String uuid, String field) {
-		Object value = sessionFactory.getCurrentSession().createSQLQuery(
-		    "select e.address_hierarchy_entry_id from address_hierarchy_entry e join address_hierarchy_level l on l.address_hierarchy_level_id = e.level_id where e.uuid = :uuid and l.address_field = :field")
+		Object value = sessionFactory
+		        .getCurrentSession()
+		        .createSQLQuery(
+		            "select e.address_hierarchy_entry_id from address_hierarchy_entry e join address_hierarchy_level l on l.address_hierarchy_level_id = e.level_id where e.uuid = :uuid and l.address_field = :field")
 		        .setString("uuid", uuid).setString("field", field).uniqueResult();
 		return value == null ? null : ((Number) value).intValue();
 	}

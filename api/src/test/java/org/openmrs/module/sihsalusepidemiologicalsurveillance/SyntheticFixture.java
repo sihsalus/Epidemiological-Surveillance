@@ -158,7 +158,6 @@ class SyntheticFixture {
 		});
 		when(dao.events()).thenReturn(Arrays.asList(event));
 		when(dao.byUuid(NotifiableEvent.class, event.getUuid())).thenReturn(event);
-		when(dao.rules(event)).thenReturn(Collections.<OutbreakAlertRule> emptyList());
 		when(dao.counts(any(), anyString(), anyInt(), anyInt())).thenReturn(Collections.<PeriodCaseCount> emptyList());
 		when(dao.encounters(any(), any(), anyString())).thenReturn(new ArrayList<Encounter>());
 		when(dao.possibleDuplicates(any(), anyList(), any(), any(), anyString()))

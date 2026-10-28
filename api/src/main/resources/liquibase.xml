@@ -43,4 +43,6 @@
     <include file="liquibase-case-investigation-form.xml"/>
     <include file="liquibase-alerts.xml"/>
     <include file="liquibase-outbreak-config.xml"/>
+    <include file="liquibase-configuration-audit.xml"/>
+    <include file="liquibase-retire-unused-tables.xml"/>
 </databaseChangeLog>

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+ <!-- Existing rows keep unknown creation metadata as NULL; do not invent historical attribution. -->
+ <changeSet id="surveillance-outbreak-config-audit-20261028" author="sihsalus">
+  <addColumn tableName="surveillance_outbreak_config">
+   <column name="creator" type="int"/>
+   <column name="date_created" type="datetime"/>
+   <column name="changed_by" type="int"/>
+   <column name="date_changed" type="datetime"/>
+  </addColumn>
+  <addForeignKeyConstraint constraintName="fk_outbreak_config_creator" baseTableName="surveillance_outbreak_config" baseColumnNames="creator" referencedTableName="users" referencedColumnNames="user_id"/>
+  <addForeignKeyConstraint constraintName="fk_outbreak_config_changed" baseTableName="surveillance_outbreak_config" baseColumnNames="changed_by" referencedTableName="users" referencedColumnNames="user_id"/>
+  <rollback>
+   <dropForeignKeyConstraint baseTableName="surveillance_outbreak_config" constraintName="fk_outbreak_config_changed"/>
+   <dropForeignKeyConstraint baseTableName="surveillance_outbreak_config" constraintName="fk_outbreak_config_creator"/>
+   <dropColumn tableName="surveillance_outbreak_config" columnName="date_changed"/>
+   <dropColumn tableName="surveillance_outbreak_config" columnName="changed_by"/>
+   <dropColumn tableName="surveillance_outbreak_config" columnName="date_created"/>
+   <dropColumn tableName="surveillance_outbreak_config" columnName="creator"/>
+  </rollback>
+ </changeSet>
+ <changeSet id="surveillance-age_group-config-audit-20261028" author="sihsalus">
+  <addColumn tableName="surveillance_age_group_config">
+   <column name="creator" type="int"/>
+   <column name="date_created" type="datetime"/>
+   <column name="changed_by" type="int"/>
+   <column name="date_changed" type="datetime"/>
+  </addColumn>
+  <addForeignKeyConstraint constraintName="fk_age_group_config_creator" baseTableName="surveillance_age_group_config" baseColumnNames="creator" referencedTableName="users" referencedColumnNames="user_id"/>
+  <addForeignKeyConstraint constraintName="fk_age_group_config_changed" baseTableName="surveillance_age_group_config" baseColumnNames="changed_by" referencedTableName="users" referencedColumnNames="user_id"/>
+  <rollback>
+   <dropForeignKeyConstraint baseTableName="surveillance_age_group_config" constraintName="fk_age_group_config_changed"/>
+   <dropForeignKeyConstraint baseTableName="surveillance_age_group_config" constraintName="fk_age_group_config_creator"/>
+   <dropColumn tableName="surveillance_age_group_config" columnName="date_changed"/>
+   <dropColumn tableName="surveillance_age_group_config" columnName="changed_by"/>
+   <dropColumn tableName="surveillance_age_group_config" columnName="date_created"/>
+   <dropColumn tableName="surveillance_age_group_config" columnName="creator"/>
+  </rollback>
+ </changeSet>
+</databaseChangeLog>

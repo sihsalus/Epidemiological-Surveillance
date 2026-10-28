@@ -148,8 +148,6 @@ public class SurveillanceCase extends BaseOpenmrsObject {
 	
 	private String surveillanceType;
 	
-	private IndividualRecord individualRecord;
-	
 	private boolean voided;
 	
 	private User creator;
@@ -302,14 +300,6 @@ public class SurveillanceCase extends BaseOpenmrsObject {
 	
 	public void setSurveillanceType(String value) {
 		surveillanceType = value;
-	}
-	
-	public IndividualRecord getIndividualRecord() {
-		return individualRecord;
-	}
-	
-	public void setIndividualRecord(IndividualRecord value) {
-		individualRecord = value;
 	}
 	
 	public boolean isVoided() {

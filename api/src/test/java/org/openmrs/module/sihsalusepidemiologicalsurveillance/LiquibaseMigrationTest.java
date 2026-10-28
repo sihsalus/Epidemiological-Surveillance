@@ -125,14 +125,14 @@ public class LiquibaseMigrationTest {
 			}
 			assertTrue("Expected FK to the native encounter diagnosis table", diagnosisForeignKeyFound);
 			try (Statement sql = connection.createStatement()) {
-				for (String table : new String[] { "NOTIFIABLE_EVENT", "OUTBREAK_ALERT_RULE", "OUTBREAK_ALERT",
-				        "PERIOD_CASE_COUNT", "EPIDEMIOLOGICAL_FOCUS", "SURVEILLANCE_CASE", "INDIVIDUAL_RECORD" }) {
+				for (String table : new String[] { "NOTIFIABLE_EVENT", "PERIOD_CASE_COUNT", "SURVEILLANCE_CASE" }) {
 					assertTrue("Expected current table " + table,
 					    connection.getMetaData().getTables(null, null, table, null).next());
 				}
 				for (String retired : new String[] { "SURVEILLANCE_NOTIFIABLE_EVENT", "SURVEILLANCE_OUTBREAK_ALERT_RULE",
 				        "SURVEILLANCE_PERIOD_CASE_COUNT", "SURVEILLANCE_EPIDEMIOLOGICAL_FOCUS", "SURVEILLANCE_AUDIT",
-				        "SURVEILLANCE_NOTI_NOTIFICATION" }) {
+				        "SURVEILLANCE_NOTI_NOTIFICATION", "EPIDEMIOLOGYSURVEILLANCE_ITEM", "OUTBREAK_ALERT",
+                    "OUTBREAK_ALERT_RULE", "EPIDEMIOLOGICAL_FOCUS", "INDIVIDUAL_RECORD" }) {
 					assertFalse("Historical table must be retired: " + retired,
 					    connection.getMetaData().getTables(null, null, retired, null).next());
 				}
@@ -145,17 +145,11 @@ public class LiquibaseMigrationTest {
 				    "insert into notifiable_event(notifiable_event_id,uuid,concept_id,periodicity,reference_regulation,valid_from,creator,date_created) values(10,'event',1,'SEMANAL','test',CURRENT_DATE,1,CURRENT_TIMESTAMP)");
 				fails(sql,
 				    "insert into notifiable_event(uuid,concept_id,periodicity,reference_regulation,valid_from,active,creator,date_created) values('duplicate-event',1,'SEMANAL','test','2020-01-01',false,1,CURRENT_TIMESTAMP)");
-				fails(sql,
-				    "insert into outbreak_alert_rule(uuid,notifiable_event_id,condition_type,version,valid_from,active,creator,date_created) values('orphan',99,'UMBRAL_CANAL',1,CURRENT_DATE,true,1,CURRENT_TIMESTAMP)");
 				sql.execute(
 				    "insert into period_case_count(uuid,notifiable_event_id,address_hierarchy_entry_id,zone_level,period_type,year,period_number,start_date,end_date,diagnosis_type,case_count,calculation_date,creator,date_created) values('count',10,1,'DISTRITO','SEMANA',2026,1,CURRENT_DATE,CURRENT_DATE,'CONFIRMADO',2,CURRENT_TIMESTAMP,1,CURRENT_TIMESTAMP)");
 				fails(sql,
 				    "insert into period_case_count(uuid,notifiable_event_id,address_hierarchy_entry_id,zone_level,period_type,year,period_number,start_date,end_date,diagnosis_type,case_count,calculation_date,creator,date_created) values('duplicate',10,1,'DISTRITO','SEMANA',2026,1,CURRENT_DATE,CURRENT_DATE,'CONFIRMADO',3,CURRENT_TIMESTAMP,1,CURRENT_TIMESTAMP)");
 				fails(sql, "delete from notifiable_event where notifiable_event_id=10");
-				fails(sql,
-				    "insert into outbreak_alert(uuid,rule_id,address_hierarchy_entry_id,year,epidemiological_week,generation_date,alert_id,creator,date_created) values('orphan-alert',1,1,2026,1,CURRENT_TIMESTAMP,99,1,CURRENT_TIMESTAMP)");
-				fails(sql,
-				    "insert into individual_record(uuid,year,epidemiological_week,format_version,content_hash,download_date,creator,date_created) values('orphan-creator',2026,1,'v1','0123456789012345678901234567890123456789012345678901234567890123',CURRENT_TIMESTAMP,99,CURRENT_TIMESTAMP)");
 				sql.execute(
 				    "insert into surveillance_case(surveillance_case_id,uuid,patient_id,encounter_id,provider_id,location_id,diagnosis_id,diagnosis_type,creator,date_created,voided) values(1,'case',1,1,1,1,1,'PROBABLE',1,CURRENT_TIMESTAMP,false)");
 				fails(sql,
