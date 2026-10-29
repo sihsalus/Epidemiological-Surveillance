@@ -68,7 +68,7 @@ public class AlertRules {
 	public List<Trigger> evaluate(Snapshot current, Snapshot previous, List<Snapshot> before, List<Snapshot> after,
 	        String periodicity, ClinicalCatalog metadata, List<OutbreakRule> rules) {
 		List<Trigger> result = new ArrayList<>();
-		if (previous == null && !current.notified && "INMEDIATA".equalsIgnoreCase(periodicity))
+		if (previous == null)
 			result.add(new Trigger("IMMEDIATE_EVENT", current.uuid, null));
 		if (previous != null && !Objects.equals(previous.status, current.status))
 			result.add(new Trigger("STATUS_CHANGED", current.uuid, previous.status + " → " + current.status));

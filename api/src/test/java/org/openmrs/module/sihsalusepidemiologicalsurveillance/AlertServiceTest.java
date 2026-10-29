@@ -12,6 +12,25 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.*;
 public class AlertServiceTest {
 	
 	@Test
+	public void displaysOriginalCaseCreatorForCaseAndOutbreakAlerts() {
+		SyntheticFixture f = new SyntheticFixture();
+		f.actor.getPerson().addName(new org.openmrs.PersonName("Ana", null, "Registro"));
+		SurveillanceCase value = new SurveillanceCase();
+		value.setCreator(f.actor);
+		value.setPatient(f.patient);
+		SurveillanceAlert alert = new SurveillanceAlert();
+		alert.setUuid("synthetic-alert");
+		alert.setCaseUuid("synthetic-case");
+		alert.setType("OUTBREAK");
+		alert.setGeneratedAt(new Date());
+		when(f.dao.byUuid(SurveillanceCase.class, "synthetic-case")).thenReturn(value);
+		when(f.dao.alerts()).thenReturn(Arrays.asList(alert));
+		assertEquals("Ana Registro", f.service.alerts(null, null, null).get(0).get("registeredBy"));
+		value.setVoided(true);
+		assertNull(f.service.alerts(null, null, null).get(0).get("registeredBy"));
+	}
+
+	@Test
 	public void newRuleAlertsForExistingConditionOnceAndDeletedRulesStopGenerating() {
 		SyntheticFixture f = new SyntheticFixture();
 		f.surveillanceRequest.origin = "IMPORTADO_NACIONAL";
@@ -34,7 +53,7 @@ public class AlertServiceTest {
 		});
 		String uuid = f.service.createDraft(f.surveillanceRequest).uuid;
 		when(f.dao.byUuid(SurveillanceCase.class, uuid)).thenReturn(cases.get(0));
-		assertTrue(alerts.isEmpty());
+		assertEquals(1, alerts.size());
 		OutbreakRuleConfiguration config = new OutbreakRuleConfiguration();
 		when(f.dao.byUuid(OutbreakRuleConfiguration.class, OutbreakRuleConfiguration.UUID)).thenReturn(config);
 		org.openmrs.module.sihsalusepidemiologicalsurveillance.api.model.OutbreakRule rule = OutbreakRuleSettings.defaults()
@@ -42,16 +61,16 @@ public class AlertServiceTest {
 		rule.id = "new-imported-rule";
 		rule.origin = "IMPORTADO_NACIONAL";
 		f.service.saveOutbreakRules(Arrays.asList(rule));
-		assertTrue(alerts.isEmpty()); // Configuration alone does not generate retrospective alerts.
+		assertEquals(1, alerts.size()); // Configuration alone does not generate retrospective alerts.
 		assertEquals(1, f.service.updateDraft(uuid, f.surveillanceRequest).generatedAlerts.size());
-		assertEquals("FOCUS_CASES", alerts.get(0).getReason());
+		assertEquals("FOCUS_CASES", alerts.get(1).getReason());
 		assertTrue(f.service.updateDraft(uuid, f.surveillanceRequest).generatedAlerts.isEmpty());
-		assertEquals(1, alerts.size());
+		assertEquals(2, alerts.size());
 		f.service.saveOutbreakRules(Collections.emptyList());
 		f.surveillanceRequest.onsetDate = "2026-01-12";
 		assertTrue(f.service.updateDraft(uuid, f.surveillanceRequest).generatedAlerts.isEmpty());
-		assertEquals(1, f.service.alerts(null, null, null).size());
-		verify(f.clinical, times(1)).notifySurveillanceResponsibles(anyString());
+		assertEquals(2, f.service.alerts(null, null, null).size());
+		verify(f.clinical, times(2)).notifySurveillanceResponsibles(anyString());
 	}
 	
 	@Test
@@ -78,11 +97,11 @@ public class AlertServiceTest {
 	}
 	
 	@Test
-	public void immediatelyNotifiableCaseWithNotificationDateDoesNotAlert() {
+	public void notifiableCaseWithNotificationDateAlerts() {
 		SyntheticFixture f = new SyntheticFixture();
 		f.event.setPeriodicity("INMEDIATA");
-		assertTrue(f.service.createDraft(f.surveillanceRequest).generatedAlerts.isEmpty());
-		verify(f.dao, never()).saveAlert(any());
+		assertEquals(1, f.service.createDraft(f.surveillanceRequest).generatedAlerts.size());
+		verify(f.dao).saveAlert(any());
 	}
 	
 	@Test

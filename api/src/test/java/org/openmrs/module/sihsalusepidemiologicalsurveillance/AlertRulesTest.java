@@ -52,6 +52,19 @@ public class AlertRulesTest {
 	}
 	
 	@Test
+	public void registrationAlertsForEveryPeriodicityAndNotificationState() {
+		for (String periodicity : Arrays.asList("INMEDIATA", "SEMANAL")) {
+			for (boolean notified : new boolean[] { false, true }) {
+				Snapshot s = record(week(2026, 5));
+				s.notified = notified;
+				AlertRules rules = new AlertRules();
+				assertTrue(has(rules.evaluate(s, null, Collections.emptyList(), Arrays.asList(s), periodicity, metadata), "IMMEDIATE_EVENT"));
+				assertFalse(has(rules.evaluate(s, s, Arrays.asList(s), Arrays.asList(s), periodicity, metadata), "IMMEDIATE_EVENT"));
+			}
+		}
+	}
+
+	@Test
 	public void immediateRegistrationAndReplay() {
 		Snapshot s = record(week(2026, 5));
 		assertTrue(has(evaluate(s, null, new ArrayList<>()), "IMMEDIATE_EVENT"));
@@ -165,12 +178,12 @@ public class AlertRulesTest {
 		extra.id = "another";
 		extra.percentile = 50.0;
 		rules.add(extra);
-		List<Trigger> triggers = new AlertRules().evaluate(current, null, before, after, "SEMANAL", metadata, rules);
+		List<Trigger> triggers = new AlertRules().evaluate(current, current, before, after, "SEMANAL", metadata, rules);
 		assertEquals(2, triggers.size());
 		assertNotEquals(triggers.get(0).key, triggers.get(1).key);
 		rules.get(0).percentile = 100.0;
 		extra.percentile = 100.0;
-		assertTrue(new AlertRules().evaluate(current, null, before, after, "SEMANAL", metadata, rules).isEmpty());
+		assertTrue(new AlertRules().evaluate(current, current, before, after, "SEMANAL", metadata, rules).isEmpty());
 	}
 	
 	@Test
@@ -188,14 +201,14 @@ public class AlertRulesTest {
 		org.openmrs.module.sihsalusepidemiologicalsurveillance.api.model.OutbreakRule rule = OutbreakRuleSettings.defaults()
 		        .get(1);
 		rule.weeks = 3;
-		List<Trigger> triggers = new AlertRules().evaluate(current, null, before, after, "SEMANAL", metadata,
+		List<Trigger> triggers = new AlertRules().evaluate(current, current, before, after, "SEMANAL", metadata,
 		    Arrays.asList(rule));
 		assertEquals(1, triggers.size());
 		assertTrue(triggers.get(0).key.endsWith(week(2026, 7).toString()));
 		before.removeIf(s -> s.onset.equals(week(2026, 6)));
 		after.removeIf(s -> s.onset.equals(week(2026, 6)));
 		assertTrue(
-		    new AlertRules().evaluate(current, null, before, after, "SEMANAL", metadata, Arrays.asList(rule)).isEmpty());
+		    new AlertRules().evaluate(current, current, before, after, "SEMANAL", metadata, Arrays.asList(rule)).isEmpty());
 	}
 	
 	@Test
@@ -205,24 +218,24 @@ public class AlertRulesTest {
 		org.openmrs.module.sihsalusepidemiologicalsurveillance.api.model.OutbreakRule rule = OutbreakRuleSettings.defaults()
 		        .get(2);
 		rule.minimumCases = 1;
-		assertEquals(1, new AlertRules().evaluate(second, null, Arrays.asList(first), Arrays.asList(first, second),
+		assertEquals(1, new AlertRules().evaluate(second, second, Arrays.asList(first), Arrays.asList(first, second),
 		    "SEMANAL", metadata, Arrays.asList(rule)).size());
 		first.onset = week(2026, 4);
-		assertTrue(new AlertRules().evaluate(second, null, Arrays.asList(first), Arrays.asList(first, second), "SEMANAL",
+		assertTrue(new AlertRules().evaluate(second, second, Arrays.asList(first), Arrays.asList(first, second), "SEMANAL",
 		    metadata, Arrays.asList(rule)).isEmpty());
 		rule.minimumCases = 0;
 		rule.focus = "ACTIVE";
 		rule.origin = "IMPORTADO_NACIONAL";
 		second.origin = "IMPORTADO_NACIONAL";
-		assertEquals("FOCUS_CASES", new AlertRules().evaluate(second, null, Arrays.asList(first),
+		assertEquals("FOCUS_CASES", new AlertRules().evaluate(second, second, Arrays.asList(first),
 		    Arrays.asList(first, second), "SEMANAL", metadata, Arrays.asList(rule)).get(0).reason);
 		first.onset = week(2025, 4);
 		rule.focus = "RESIDUAL";
-		assertEquals(1, new AlertRules().evaluate(second, null, Arrays.asList(first), Arrays.asList(first, second),
+		assertEquals(1, new AlertRules().evaluate(second, second, Arrays.asList(first), Arrays.asList(first, second),
 		    "SEMANAL", metadata, Arrays.asList(rule)).size());
 		first.origin = "UNKNOWN";
 		rule.focus = "ELIMINATED";
-		assertTrue(new AlertRules().evaluate(second, null, Arrays.asList(first), Arrays.asList(first, second), "SEMANAL",
+		assertTrue(new AlertRules().evaluate(second, second, Arrays.asList(first), Arrays.asList(first, second), "SEMANAL",
 		    metadata, Arrays.asList(rule)).isEmpty());
 	}
 }

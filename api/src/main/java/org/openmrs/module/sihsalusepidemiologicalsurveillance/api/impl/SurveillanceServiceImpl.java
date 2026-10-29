@@ -144,14 +144,19 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		r.put("type", alert.getType());
 		r.put("reason", alert.getReason());
 		r.put("caseUuid", alert.getCaseUuid());
-		if ("IMMEDIATE".equals(alert.getType()) && alert.getCaseUuid() != null) {
+		if (alert.getCaseUuid() != null) {
 			SurveillanceCase value = dao.byUuid(SurveillanceCase.class, alert.getCaseUuid());
 			if (value != null && !value.isVoided() && value.getPatient() != null && !value.getPatient().isVoided()) {
-				SurveillanceCaseResponse detail = response(value);
-				r.put("patientDisplay", detail.patientDisplay);
-				r.put("encounterDate", detail.encounterDate);
-				r.put("diagnosisDisplay", detail.diagnosisDisplay);
-				r.put("diagnosisIcd10", detail.diagnosisIcd10);
+				User creator = value.getCreator();
+				String name = creator == null || creator.getPersonName() == null ? null : creator.getPersonName().getFullName();
+				r.put("registeredBy", ClinicalCatalogService.present(name) ? name : creator == null ? null : creator.getUsername());
+				if ("IMMEDIATE".equals(alert.getType())) {
+					SurveillanceCaseResponse detail = response(value);
+					r.put("patientDisplay", detail.patientDisplay);
+					r.put("encounterDate", detail.encounterDate);
+					r.put("diagnosisDisplay", detail.diagnosisDisplay);
+					r.put("diagnosisIcd10", detail.diagnosisIcd10);
+				}
 			}
 		}
 		
