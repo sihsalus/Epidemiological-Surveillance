@@ -7,7 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.openmrs.module.sihsalusepidemiologicalsurveillance.api.model.OutbreakRule;
 
 public class OutbreakRuleSettings {
-
+	
 	public static List<OutbreakRule> defaults() {
 		List<OutbreakRule> result = new ArrayList<>();
 		for (String type : Arrays.asList("THRESHOLD", "CONSECUTIVE", "FOCUS_CASES")) {
@@ -26,7 +26,7 @@ public class OutbreakRuleSettings {
 		}
 		return result;
 	}
-
+	
 	public static List<OutbreakRule> read(String stored) {
 		if (stored == null)
 			return defaults();
@@ -39,9 +39,9 @@ public class OutbreakRuleSettings {
 			throw new SurveillanceException(422, "INVALID_OUTBREAK_RULES");
 		}
 	}
-
+	
 	public static String validate(List<OutbreakRule> rules) {
-		if (rules == null || rules.isEmpty())
+		if (rules == null)
 			invalid();
 		Set<String> ids = new HashSet<>();
 		for (OutbreakRule r : rules) {
@@ -68,7 +68,7 @@ public class OutbreakRuleSettings {
 			throw new SurveillanceException(422, "INVALID_OUTBREAK_RULES");
 		}
 	}
-
+	
 	private static void invalid() {
 		throw new SurveillanceException(422, "INVALID_OUTBREAK_RULES");
 	}

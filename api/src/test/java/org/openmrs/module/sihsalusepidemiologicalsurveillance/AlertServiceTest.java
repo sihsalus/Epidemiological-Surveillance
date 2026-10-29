@@ -12,6 +12,49 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.*;
 public class AlertServiceTest {
 	
 	@Test
+	public void newRuleAlertsForExistingConditionOnceAndDeletedRulesStopGenerating() {
+		SyntheticFixture f = new SyntheticFixture();
+		f.surveillanceRequest.origin = "IMPORTADO_NACIONAL";
+		f.surveillanceRequest.infectionAddressUuid = SyntheticFixture.uuid(92);
+		when(f.dao.populatedCenterId(f.surveillanceRequest.infectionAddressUuid)).thenReturn(92);
+		List<SurveillanceCase> cases = new ArrayList<>();
+		List<SurveillanceAlert> alerts = new ArrayList<>();
+		when(f.dao.surveillanceCases()).thenReturn(cases);
+		when(f.dao.alerts()).thenAnswer(i -> new ArrayList<>(alerts));
+		when(f.dao.save(any())).thenAnswer(i -> {
+			Object value = i.getArgument(0);
+			if (value instanceof SurveillanceCase && !cases.contains(value))
+				cases.add((SurveillanceCase) value);
+			return value;
+		});
+		when(f.dao.saveAlert(any())).thenAnswer(i -> {
+			SurveillanceAlert value = i.getArgument(0);
+			alerts.add(value);
+			return value;
+		});
+		String uuid = f.service.createDraft(f.surveillanceRequest).uuid;
+		when(f.dao.byUuid(SurveillanceCase.class, uuid)).thenReturn(cases.get(0));
+		assertTrue(alerts.isEmpty());
+		OutbreakRuleConfiguration config = new OutbreakRuleConfiguration();
+		when(f.dao.byUuid(OutbreakRuleConfiguration.class, OutbreakRuleConfiguration.UUID)).thenReturn(config);
+		org.openmrs.module.sihsalusepidemiologicalsurveillance.api.model.OutbreakRule rule = OutbreakRuleSettings.defaults()
+		        .get(2);
+		rule.id = "new-imported-rule";
+		rule.origin = "IMPORTADO_NACIONAL";
+		f.service.saveOutbreakRules(Arrays.asList(rule));
+		assertTrue(alerts.isEmpty()); // Configuration alone does not generate retrospective alerts.
+		assertEquals(1, f.service.updateDraft(uuid, f.surveillanceRequest).generatedAlerts.size());
+		assertEquals("FOCUS_CASES", alerts.get(0).getReason());
+		assertTrue(f.service.updateDraft(uuid, f.surveillanceRequest).generatedAlerts.isEmpty());
+		assertEquals(1, alerts.size());
+		f.service.saveOutbreakRules(Collections.emptyList());
+		f.surveillanceRequest.onsetDate = "2026-01-12";
+		assertTrue(f.service.updateDraft(uuid, f.surveillanceRequest).generatedAlerts.isEmpty());
+		assertEquals(1, f.service.alerts(null, null, null).size());
+		verify(f.clinical, times(1)).notifySurveillanceResponsibles(anyString());
+	}
+	
+	@Test
 	public void displaysAttendantsNameWhileRetainingStableAuditIdentity() {
 		SyntheticFixture f = new SyntheticFixture();
 		f.actor.setUsername("synthetic.login");

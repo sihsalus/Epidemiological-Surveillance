@@ -79,13 +79,13 @@ public class SurveillanceController {
 	public List<OutbreakRule> outbreakRules() {
 		return service().getOutbreakRules();
 	}
-
+	
 	@RequestMapping(value = "/configuration/outbreak-rules", method = RequestMethod.PUT, consumes = MediaType.APPLICATION_JSON_VALUE)
 	@ResponseBody
 	public List<OutbreakRule> saveOutbreakRules(@RequestBody List<OutbreakRule> rules) {
 		return service().saveOutbreakRules(rules);
 	}
-
+	
 	@RequestMapping(value = "/configuration/endemic-channel", method = RequestMethod.GET)
 	@ResponseBody
 	public int[] endemicSettings() {

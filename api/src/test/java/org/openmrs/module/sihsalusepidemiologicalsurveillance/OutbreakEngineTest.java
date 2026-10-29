@@ -169,10 +169,11 @@ public class OutbreakEngineTest {
 	@Test
 	public void removedRuleDoesNotTrigger() {
 		CaseResult result = new CaseResult();
-		engine.evaluate(current(), eliminated(), Collections.<OutbreakRule> emptyList(), records(0, 1), history(), m, result);
+		engine.evaluate(current(), eliminated(), Collections.<OutbreakRule> emptyList(), records(0, 1), history(), m,
+		    result);
 		assertTrue(result.outbreakAlerts.isEmpty());
 	}
-
+	
 	@Test
 	public void configuredMinimumCasesIsRespected() {
 		OutbreakRule rule = rule("ELIMINATED_FOCUS");
@@ -183,14 +184,14 @@ public class OutbreakEngineTest {
 		engine.evaluate(current(), eliminated(), Arrays.asList(rule), records(0, 3), history(), m, result);
 		assertEquals(Arrays.asList("AUTOCHTHONOUS_ELIMINATED"), result.outbreakAlerts);
 	}
-
+	
 	@Test
 	public void flatWeeksAboveThresholdMatchSharedConsecutiveRule() {
 		CaseResult result = new CaseResult();
 		engine.evaluate(current(), null, Arrays.asList(rule("SUSTAINED")), records(2, 2), history(), m, result);
 		assertTrue(result.outbreakAlerts.contains("SUSTAINED_INCREASE"));
 	}
-
+	
 	@Test
 	public void configuredPercentileReplacesFixedQuartile() {
 		List<PeriodCaseCount> history = history();

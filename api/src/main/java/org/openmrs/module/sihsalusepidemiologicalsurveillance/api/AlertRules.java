@@ -64,7 +64,7 @@ public class AlertRules {
 	        String periodicity, ClinicalCatalog metadata) {
 		return evaluate(current, previous, before, after, periodicity, metadata, OutbreakRuleSettings.defaults());
 	}
-
+	
 	public List<Trigger> evaluate(Snapshot current, Snapshot previous, List<Snapshot> before, List<Snapshot> after,
 	        String periodicity, ClinicalCatalog metadata, List<OutbreakRule> rules) {
 		List<Trigger> result = new ArrayList<>();
@@ -88,18 +88,18 @@ public class AlertRules {
 			// A late entry can complete any sequence containing the changed week.
 			for (int offset = 0; offset < rule.weeks; offset++) {
 				LocalDate end = week.plusWeeks(offset);
-				boolean crossed = true, alreadyAbove = true;
+				boolean exceeded = true;
 				StringBuilder info = new StringBuilder("Percentil: " + rule.percentile + "; semanas: " + rule.weeks);
 				for (int n = 0; n < rule.weeks; n++) {
 					LocalDate date = end.minusWeeks(n);
 					Double threshold = percentile(after, current.center, date, metadata, calendar, rule.percentile);
 					int count = count(after, current.center, date, calendar);
-					int oldCount = count(before, current.center, date, calendar);
-					crossed &= threshold != null && count > threshold;
-					alreadyAbove &= threshold != null && oldCount > threshold;
+					exceeded &= threshold != null && count > threshold;
 					info.append("; semana ").append(date).append(": ").append(count).append(" / ").append(threshold);
 				}
-				if (crossed && !alreadyAbove) {
+				// The service deduplicates persisted occurrences per rule. A newly configured
+				// rule must be able to alert even if its threshold was already exceeded.
+				if (exceeded) {
 					String reason = "THRESHOLD".equals(rule.type) ? "EPIDEMIC_THRESHOLD" : "SUSTAINED_INCREASE";
 					result.add(new Trigger(reason, occurrence(rule, current.center + ":" + end), info.toString()));
 				}
@@ -111,7 +111,7 @@ public class AlertRules {
 	private String occurrence(OutbreakRule rule, String key) {
 		return (rule.id.equals("default-" + rule.type) ? "" : rule.id + ":") + key;
 	}
-
+	
 	private boolean included(Snapshot s) {
 		return s.center != null && s.onset != null && ("CONFIRMADO".equals(s.status) || "PROBABLE".equals(s.status));
 	}
@@ -120,8 +120,7 @@ public class AlertRules {
 	        EpidemiologicalCalendar calendar, List<Trigger> result) {
 		LocalDate start = calendar.start(current.onset, "semana");
 		long count = focusCount(after, current.center, start, rule.origin, calendar);
-		long oldCount = focusCount(before, current.center, start, rule.origin, calendar);
-		if (count <= rule.minimumCases || oldCount > rule.minimumCases)
+		if (count <= rule.minimumCases)
 			return;
 		Integer lastLocal = null;
 		boolean unknown = false;
@@ -146,7 +145,7 @@ public class AlertRules {
 		        "Semana desde " + start + "; origen: " + rule.origin + "; foco previo: " + rule.focus + "; casos: " + count
 		                + "; superar: " + rule.minimumCases));
 	}
-
+	
 	private long focusCount(List<Snapshot> records, Integer center, LocalDate week, String origin,
 	        EpidemiologicalCalendar calendar) {
 		return records.stream().filter(s -> included(s) && Objects.equals(center, s.center) && origin.equals(s.origin)

@@ -38,7 +38,7 @@ public class SurveillanceControllerTest {
 		assertEquals(Integer.valueOf(4), ((OutbreakRule) capture.getValue().get(1)).weeks);
 		assertEquals(Integer.valueOf(2), ((OutbreakRule) capture.getValue().get(2)).minimumCases);
 	}
-
+	
 	@Test
 	public void alertRoutesBindFiltersAttendanceAndAuthorizedStream() throws Exception {
 		SurveillanceService service = mock(SurveillanceService.class);

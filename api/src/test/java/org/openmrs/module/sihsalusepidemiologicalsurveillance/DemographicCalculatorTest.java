@@ -72,7 +72,7 @@ public class DemographicCalculatorTest {
 			assertEquals("INVALID_AGE_GROUPS", ex.getCode());
 		}
 	}
-
+	
 	private DemographicCalculator.Record record(Integer age, String sex, String disease, Boolean pregnant, String date) {
 		DemographicCalculator.Record value = new DemographicCalculator.Record();
 		value.age = age;

@@ -80,7 +80,7 @@ public class AlertRulesTest {
 	}
 	
 	@Test
-	public void crossesStrictQ3AndDoesNotRepeatAboveIt() {
+	public void exceedsStrictQ3EvenWhenAlreadyAboveItForANewRule() {
 		List<Snapshot> records = history(5, 2);
 		records.add(record(week(2026, 5)));
 		Snapshot second = record(week(2026, 5));
@@ -89,7 +89,7 @@ public class AlertRulesTest {
 		Snapshot third = record(week(2026, 5));
 		assertTrue(has(evaluate(third, null, records), "EPIDEMIC_THRESHOLD"));
 		records.add(third);
-		assertFalse(has(evaluate(record(week(2026, 5)), null, records), "EPIDEMIC_THRESHOLD"));
+		assertTrue(has(evaluate(record(week(2026, 5)), null, records), "EPIDEMIC_THRESHOLD"));
 	}
 	
 	@Test
@@ -145,7 +145,7 @@ public class AlertRulesTest {
 			when(user.hasPrivilege(privilege)).thenReturn(true);
 		}
 	}
-
+	
 	@Test
 	public void customPercentilesAndIndependentRulesUseTheirOwnThresholds() {
 		List<Snapshot> before = new ArrayList<>();
@@ -172,7 +172,7 @@ public class AlertRulesTest {
 		extra.percentile = 100.0;
 		assertTrue(new AlertRules().evaluate(current, null, before, after, "SEMANAL", metadata, rules).isEmpty());
 	}
-
+	
 	@Test
 	public void threeConsecutiveWeeksCanBeCompletedByLateEntry() {
 		List<Snapshot> before = new ArrayList<>();
@@ -197,7 +197,7 @@ public class AlertRulesTest {
 		assertTrue(
 		    new AlertRules().evaluate(current, null, before, after, "SEMANAL", metadata, Arrays.asList(rule)).isEmpty());
 	}
-
+	
 	@Test
 	public void focusRuleCountsSelectedOriginInOneWeekUsingClassificationBeforeWeek() {
 		Snapshot first = record(week(2026, 5)), second = record(week(2026, 5));

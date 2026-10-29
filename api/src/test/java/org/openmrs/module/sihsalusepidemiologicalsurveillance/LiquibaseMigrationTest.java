@@ -132,7 +132,7 @@ public class LiquibaseMigrationTest {
 				for (String retired : new String[] { "SURVEILLANCE_NOTIFIABLE_EVENT", "SURVEILLANCE_OUTBREAK_ALERT_RULE",
 				        "SURVEILLANCE_PERIOD_CASE_COUNT", "SURVEILLANCE_EPIDEMIOLOGICAL_FOCUS", "SURVEILLANCE_AUDIT",
 				        "SURVEILLANCE_NOTI_NOTIFICATION", "EPIDEMIOLOGYSURVEILLANCE_ITEM", "OUTBREAK_ALERT",
-                    "OUTBREAK_ALERT_RULE", "EPIDEMIOLOGICAL_FOCUS", "INDIVIDUAL_RECORD" }) {
+				        "OUTBREAK_ALERT_RULE", "EPIDEMIOLOGICAL_FOCUS", "INDIVIDUAL_RECORD" }) {
 					assertFalse("Historical table must be retired: " + retired,
 					    connection.getMetaData().getTables(null, null, retired, null).next());
 				}

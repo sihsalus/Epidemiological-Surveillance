@@ -12,7 +12,7 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.api.OutbreakRuleSe
 import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.*;
 
 public class ConfigurationAuditTest {
-
+	
 	@Test
 	public void outbreakRuleConfigurationPreservesCreationAndRecordsEditor() {
 		SyntheticFixture f = new SyntheticFixture();
@@ -27,7 +27,7 @@ public class ConfigurationAuditTest {
 		assertFalse(config.getDateCreated().after(new Date()));
 		assertNull(config.getChangedBy());
 		assertNull(config.getDateChanged());
-
+		
 		Date created = config.getDateCreated();
 		User editor = new User(99);
 		when(f.access.require(SurveillanceConstants.MANAGE)).thenReturn(editor);
@@ -40,7 +40,7 @@ public class ConfigurationAuditTest {
 		assertFalse(config.getDateChanged().before(created));
 		verify(f.dao, times(2)).save(config);
 	}
-
+	
 	@Test
 	public void outbreakRuleConfigurationDoesNotInventLegacyCreation() {
 		SyntheticFixture f = new SyntheticFixture();
@@ -54,7 +54,7 @@ public class ConfigurationAuditTest {
 		assertNotNull(config.getDateChanged());
 		verify(f.dao).save(config);
 	}
-
+	
 	@Test
 	public void ageGroupConfigurationPreservesCreationAndRecordsEditor() {
 		SyntheticFixture f = new SyntheticFixture();
@@ -69,7 +69,7 @@ public class ConfigurationAuditTest {
 		assertFalse(config.getDateCreated().after(new Date()));
 		assertNull(config.getChangedBy());
 		assertNull(config.getDateChanged());
-
+		
 		Date created = config.getDateCreated();
 		User editor = new User(99);
 		when(f.access.require(SurveillanceConstants.MANAGE)).thenReturn(editor);
@@ -82,7 +82,7 @@ public class ConfigurationAuditTest {
 		assertFalse(config.getDateChanged().before(created));
 		verify(f.dao, times(2)).save(config);
 	}
-
+	
 	@Test
 	public void ageGroupConfigurationDoesNotInventLegacyCreation() {
 		SyntheticFixture f = new SyntheticFixture();

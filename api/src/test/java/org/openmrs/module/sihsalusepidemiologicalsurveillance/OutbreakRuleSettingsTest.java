@@ -11,7 +11,7 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.api.model.Outbreak
 import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.OutbreakRuleConfiguration;
 
 public class OutbreakRuleSettingsTest {
-
+	
 	@Test
 	public void savesDefaultsEditedValuesAndAdditionalRulesWithPermissions() {
 		SyntheticFixture f = new SyntheticFixture();
@@ -48,7 +48,7 @@ public class OutbreakRuleSettingsTest {
 		}
 		verify(f.dao, times(1)).save(config);
 	}
-
+	
 	@Test
 	public void rejectsInvalidParametersBeforeWriting() {
 		for (int scenario = 0; scenario < 10; scenario++) {
@@ -83,7 +83,7 @@ public class OutbreakRuleSettingsTest {
 					rules.get(0).type = "UNKNOWN";
 					break;
 				case 9:
-					rules.clear();
+					rules = null;
 					break;
 			}
 			try {
@@ -95,5 +95,21 @@ public class OutbreakRuleSettingsTest {
 			}
 			verify(f.dao, never()).save(any());
 		}
+	}
+	
+	@Test
+	public void deletesRulesIncludingLastWithoutRestoringDefaults() {
+		SyntheticFixture f = new SyntheticFixture();
+		OutbreakRuleConfiguration config = new OutbreakRuleConfiguration();
+		config.setRules(OutbreakRuleSettings.validate(OutbreakRuleSettings.defaults()));
+		when(f.dao.byUuid(OutbreakRuleConfiguration.class, OutbreakRuleConfiguration.UUID)).thenReturn(config);
+		List<OutbreakRule> rules = f.service.getOutbreakRules();
+		rules.remove(1);
+		f.service.saveOutbreakRules(rules);
+		assertEquals(2, f.service.getOutbreakRules().size());
+		f.service.saveOutbreakRules(Collections.emptyList());
+		assertEquals("[]", config.getRules());
+		assertTrue(f.service.getOutbreakRules().isEmpty());
+		assertEquals(3, OutbreakRuleSettings.read(null).size());
 	}
 }

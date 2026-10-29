@@ -5,7 +5,7 @@ public class AgeGroup {
 	public String key;
 	
 	public String name;
-
+	
 	public Integer minAge;
 	
 	public Integer maxAge;

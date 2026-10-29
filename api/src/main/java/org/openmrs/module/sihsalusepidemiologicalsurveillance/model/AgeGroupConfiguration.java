@@ -13,45 +13,45 @@ public class AgeGroupConfiguration extends BaseOpenmrsObject {
 	private Integer id;
 	
 	private User creator;
-
+	
 	private Date dateCreated;
-
+	
 	private User changedBy;
-
+	
 	private Date dateChanged;
-
+	
 	public User getCreator() {
 		return creator;
 	}
-
+	
 	public void setCreator(User value) {
 		creator = value;
 	}
-
+	
 	public Date getDateCreated() {
 		return dateCreated;
 	}
-
+	
 	public void setDateCreated(Date value) {
 		dateCreated = value;
 	}
-
+	
 	public User getChangedBy() {
 		return changedBy;
 	}
-
+	
 	public void setChangedBy(User value) {
 		changedBy = value;
 	}
-
+	
 	public Date getDateChanged() {
 		return dateChanged;
 	}
-
+	
 	public void setDateChanged(Date value) {
 		dateChanged = value;
 	}
-
+	
 	private String lowerBounds;
 	
 	public Integer getId() {

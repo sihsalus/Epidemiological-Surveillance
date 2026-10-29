@@ -10,12 +10,12 @@ public class OutbreakEngine {
 	
 	/** Calculated compatibility value; not a persistent entity. */
 	public static class FocusStatus {
-
+		
 		public String classification;
-
+		
 		public Boolean receptive;
 	}
-
+	
 	public void evaluate(CaseRecord current, FocusStatus focus, List<OutbreakRule> rules, List<CaseRecord> recent,
 	        List<PeriodCaseCount> history, ClinicalCatalog m, CaseResult result) {
 		if ("DISCARDED".equals(current.status))
@@ -44,14 +44,14 @@ public class OutbreakEngine {
 			if ("FOCUS_CASES".equals(rule.type)) {
 				if (focus != null && rule.focus.equals(focus.classification) && rule.origin.equals(origin(current.origin))
 				        && countOrigin(recent, current.eventUuid, week, week.plusWeeks(1), rule.origin) > rule.minimumCases)
-					result.outbreakAlerts.add(eliminated && "AUTOCTONO".equals(rule.origin) ? "AUTOCHTHONOUS_ELIMINATED"
-					        : "FOCUS_CASES");
+					result.outbreakAlerts
+					        .add(eliminated && "AUTOCTONO".equals(rule.origin) ? "AUTOCHTHONOUS_ELIMINATED" : "FOCUS_CASES");
 			} else if ("THRESHOLD".equals(rule.type)) {
 				List<Integer> sample = ReportCalculator.history(history, calendar.year(week, "semana"),
 				    calendar.number(week, "semana"), m);
 				int count = count(recent, current.eventUuid, week, week.plusWeeks(1));
-				Double threshold = sample.size() < m.minimumHistoricalYears ? null : channel.quantile(sample,
-				    rule.percentile / 100.0);
+				Double threshold = sample.size() < m.minimumHistoricalYears ? null
+				        : channel.quantile(sample, rule.percentile / 100.0);
 				if (threshold == null)
 					warnHistory(result);
 				else if (count > threshold && count - 1 <= threshold)
@@ -66,8 +66,8 @@ public class OutbreakEngine {
 					int count = count(recent, current.eventUuid, date, date.plusWeeks(1));
 					List<Integer> sample = ReportCalculator.history(history, calendar.year(date, "semana"),
 					    calendar.number(date, "semana"), m);
-					Double threshold = sample.size() < m.minimumHistoricalYears ? null : channel.quantile(sample,
-					    rule.percentile / 100.0);
+					Double threshold = sample.size() < m.minimumHistoricalYears ? null
+					        : channel.quantile(sample, rule.percentile / 100.0);
 					if (threshold == null) {
 						sustained = false;
 						warnHistory(result);
@@ -94,7 +94,7 @@ public class OutbreakEngine {
 		if (!result.warnings.contains("INSUFFICIENT_HISTORY"))
 			result.warnings.add("INSUFFICIENT_HISTORY");
 	}
-
+	
 	private String origin(String value) {
 		String[] legacy = { "AUTOCHTHONOUS", "IMPORTED_NATIONAL", "IMPORTED_INTERNATIONAL", "INDUCED", "INTRODUCED",
 		        "RELAPSE", "RECRUDESCENCE" };
@@ -105,7 +105,7 @@ public class OutbreakEngine {
 				return current[i];
 		return value;
 	}
-
+	
 	private int countOrigin(List<CaseRecord> records, String event, LocalDate start, LocalDate end, String origin) {
 		List<CaseRecord> matching = new ArrayList<>();
 		for (CaseRecord record : records)
