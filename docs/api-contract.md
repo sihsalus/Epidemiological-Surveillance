@@ -37,14 +37,16 @@ mapeos, se usa un nombre `SHORT` no anulado con formato CIE-10, siempre que sea
 | Operación | Ruta | Privilegio | Resultado |
 |---|---|---|---|
 | Crear borrador | `POST /cases` | `Vigilancia Epidemiologica: Registrar Casos` | 201 `SurveillanceCase` |
-| Editar borrador | `PUT /cases/{uuid}` | `Vigilancia Epidemiologica: Registrar Casos` | 200 `SurveillanceCase` |
+| Editar borrador | `PUT /cases/{uuid}` | `Vigilancia Epidemiologica: Editar Casos` | 200 `SurveillanceCase` |
 | Consultar caso | `GET /cases/{uuid}` | `Vigilancia Epidemiologica: Ver Casos` | 200 `SurveillanceCase` |
-| Cerrar/notificar caso | `POST /cases/{uuid}/close` | `Vigilancia Epidemiologica: Registrar Casos` | 200 `SurveillanceCase` |
+
+Al editar se conserva el profesional que registró el caso (`providerUuid` debe
+coincidir con el registrado) y el usuario que edita queda en `changed_by`. Así,
+el responsable de epidemiología puede editar casos registrados por un médico sin
+tener el privilegio de registro.
 
 `POST` y `PUT` permiten campos epidemiológicos incompletos para conservar un borrador.
-La operación `close` no persiste una columna de estado: solo valida RF-07 y deja el caso
-listo para el flujo de notificación de iteración 2. Mientras no exista dicho flujo,
-`close` no asigna `individualRecordUuid`.
+No existe una operación de cierre de casos ni un estado de cerrado.
 
 ### Cuerpo de creación o edición
 
@@ -86,7 +88,7 @@ columna histórica no se convierte en una afirmación de causalidad.
 El SaveHandler de Person/Patient limpia las atribuciones de todos sus casos al
 volver a vivo o retirar la fecha, con auditoría en la misma operación de guardado.
 Los casos de fallecidos siguen siendo editables. El filtro de fallecidos consulta
-Person, y la validación de cierre toma también esa fuente.
+Person.
 Requiere actualizar ESM y OMOD juntos y aplicar la migración
 `surveillance-death-attribution-20261020` (columna nullable `varchar(20)`).
 

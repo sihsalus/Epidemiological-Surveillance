@@ -148,8 +148,10 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 			SurveillanceCase value = dao.byUuid(SurveillanceCase.class, alert.getCaseUuid());
 			if (value != null && !value.isVoided() && value.getPatient() != null && !value.getPatient().isVoided()) {
 				User creator = value.getCreator();
-				String name = creator == null || creator.getPersonName() == null ? null : creator.getPersonName().getFullName();
-				r.put("registeredBy", ClinicalCatalogService.present(name) ? name : creator == null ? null : creator.getUsername());
+				String name = creator == null || creator.getPersonName() == null ? null
+				        : creator.getPersonName().getFullName();
+				r.put("registeredBy",
+				    ClinicalCatalogService.present(name) ? name : creator == null ? null : creator.getUsername());
 				if ("IMMEDIATE".equals(alert.getType())) {
 					SurveillanceCaseResponse detail = response(value);
 					r.put("patientDisplay", detail.patientDisplay);
@@ -792,7 +794,7 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 	
 	@Override
 	public SurveillanceCaseResponse updateDraft(String uuid, SurveillanceCaseRequest request) {
-		User actor = access.require(SurveillanceConstants.REGISTER);
+		User actor = access.require(SurveillanceConstants.EDIT);
 		dao.lockAlerts();
 		SurveillanceCase value = dao.byUuid(SurveillanceCase.class, uuid);
 		if (value == null || value.isVoided())
@@ -817,40 +819,6 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		if (value == null || value.isVoided())
 			throw new SurveillanceException(404, "CASE_NOT_FOUND");
 		return response(value);
-	}
-	
-	@Override
-	public SurveillanceCaseResponse closeDraft(String uuid) {
-		User actor = access.require(SurveillanceConstants.REGISTER);
-		SurveillanceCase value = dao.byUuid(SurveillanceCase.class, uuid);
-		if (value == null || value.isVoided())
-			throw new SurveillanceException(404, "CASE_NOT_FOUND");
-		SurveillanceCaseResponse result = response(value);
-		if (result.onsetDate == null || result.infectionAddressUuid == null)
-			throw new SurveillanceException(422, "REQUIRED_FIELDS", Arrays.asList("onsetDate", "infectionAddressUuid"));
-		if (!hasActiveIdentifier(value.getPatient()))
-			throw new SurveillanceException(422, "REQUIRED_FIELDS", Collections.singletonList("patientIdentifier"));
-		if (!hasActiveResidence(value.getPatient()))
-			throw new SurveillanceException(422, "REQUIRED_FIELDS", Collections.singletonList("patientResidence"));
-		if (value.getPatient().getDeathDate() == null)
-			throw new SurveillanceException(422, "REQUIRED_FIELDS", Collections.singletonList("deathDate"));
-		return result;
-	}
-	
-	private boolean hasActiveIdentifier(Patient patient) {
-		for (PatientIdentifier identifier : patient.getIdentifiers())
-			if (!identifier.isVoided() && ClinicalCatalogService.present(identifier.getIdentifier()))
-				return true;
-		return false;
-	}
-	
-	private boolean hasActiveResidence(Patient patient) {
-		if (patient.getPerson().getAddresses() == null)
-			return false;
-		for (PersonAddress address : patient.getPerson().getAddresses())
-			if (!address.isVoided())
-				return true;
-		return false;
 	}
 	
 	@Override
@@ -885,14 +853,19 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 				throw new SurveillanceException(422, "REQUIRED_FIELDS", keys[i], "required");
 		Patient patient = clinical.patient(request.patientUuid);
 		Encounter encounter = clinical.encounter(request.encounterUuid);
-		Provider provider = clinical.provider(request.providerUuid);
+		// Editing keeps the registering professional; the editor is recorded in changed_by.
+		boolean keepProvider = !creating && value.getProvider() != null;
+		Provider provider = keepProvider ? value.getProvider() : clinical.provider(request.providerUuid);
 		Location location = clinical.location(request.locationUuid);
 		Diagnosis diagnosis = clinical.diagnosis(request.diagnosisUuid);
 		if (patient == null || patient.getVoided())
 			throw new SurveillanceException(422, "INVALID_REFERENCE", "patientUuid", "selection");
 		if (encounter == null || encounter.getVoided() || !patient.equals(encounter.getPatient()))
 			throw new SurveillanceException(422, "INVALID_REFERENCE", "encounterUuid", "selection");
-		if (provider == null || provider.getRetired() || provider.getPerson() == null
+		if (keepProvider) {
+			if (!provider.getUuid().equals(request.providerUuid))
+				throw new SurveillanceException(422, "INVALID_REFERENCE", "providerUuid", "selection");
+		} else if (provider == null || provider.getRetired() || provider.getPerson() == null
 		        || !provider.getPerson().equals(actor.getPerson()))
 			throw new SurveillanceException(422, "INVALID_REFERENCE", "providerUuid", "selection");
 		if (location == null || location.getRetired() || !location.equals(encounter.getLocation()))

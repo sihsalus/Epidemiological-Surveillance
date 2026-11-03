@@ -10,6 +10,9 @@ public final class SurveillanceConstants {
 	
 	public static final String REGISTER = "Vigilancia Epidemiologica: Registrar Casos";
 	
+	/** Separate from REGISTER: epidemiology staff edit cases they did not register (RF-05). */
+	public static final String EDIT = "Vigilancia Epidemiologica: Editar Casos";
+
 	public static final String REPORT = "Vigilancia Epidemiologica: Ver Indicadores";
 	
 	public static final String MANAGE = "Vigilancia Epidemiologica: Configurar";

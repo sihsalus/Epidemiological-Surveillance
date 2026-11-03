@@ -12,7 +12,7 @@ OMOD `io.github.proyecto-santaclotilde:sihsalusepidemiologicalsurveillance`, par
 
 ## Registro de casos
 
-El contrato está congelado en [docs/api-contract.md](docs/api-contract.md). `POST /cases` y `PUT /cases/{uuid}` permiten borradores. `POST /cases/{uuid}/close` aplica las validaciones RF-07 sin añadir una columna de estado. La restricción única por diagnóstico impide dos filas para el mismo diagnóstico.
+El contrato está descrito en [docs/api-contract.md](docs/api-contract.md). `POST /cases` y `PUT /cases/{uuid}` permiten borradores. No existe una operación de cierre de casos. La restricción única por diagnóstico impide dos filas para el mismo diagnóstico.
 
 El servidor conserva `laboratoryObservationUuid` en `laboratory_observation_id` y
 deriva `test_order_id` desde `Obs.order` cuando exista. Verifica que la observación
@@ -69,11 +69,20 @@ NOT RUN; no se realizó despliegue.
 | --- | --- |
 | Abrir la aplicación y catálogo | `app:home.epidemiologicalSurveillance` |
 | Consultar casos | `Vigilancia Epidemiologica: Ver Casos` |
-| Crear, editar o cerrar casos | `Vigilancia Epidemiologica: Registrar Casos` |
+| Crear casos (médico) | `Vigilancia Epidemiologica: Registrar Casos` |
+| Editar casos, conservando el profesional que registró | `Vigilancia Epidemiologica: Editar Casos` |
+| Consultar y atender alertas | Acceso, Ver Casos, Editar Casos, Ver Indicadores y Configurar |
 | Consultar indicadores | `Vigilancia Epidemiologica: Ver Indicadores` |
 | Configurar eventos y ejecutar recálculo | `Vigilancia Epidemiologica: Configurar` |
 
 Además se requieren los privilegios clínicos nativos de OpenMRS para consultar las referencias involucradas. Los nombres no se asignan automáticamente a roles.
+
+Validación local (03/11/2026): `mvn -B clean verify` y el pase final
+`mvn -B verify` PASSED (202 pruebas API y 12 REST). Incluye edición permitida
+y denegada, conservación del profesional, auditoría del editor, permisos de
+alertas y respuesta 404 de la antigua ruta de cierre. Smoke DEV/QLTY NOT RUN;
+no se desplegó. Actualizar ESM y OMOD juntos y asignar Editar Casos a los roles
+correspondientes.
 
 ## Auditoría
 

@@ -13,6 +13,19 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.web.controller.Sur
 public class SurveillanceControllerTest {
 	
 	@Test
+	public void caseClosingRouteIsNotAvailable() throws Exception {
+		SurveillanceService service = mock(SurveillanceService.class);
+		SurveillanceController controller = new SurveillanceController();
+		controller.setService(service);
+		org.springframework.test.web.servlet.MockMvc mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders
+		        .standaloneSetup(controller).build();
+		mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+		        .post("/rest/v1/sihsalusepidemiologicalsurveillance/cases/synthetic/close"))
+		        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isNotFound());
+		verifyNoInteractions(service);
+	}
+
+	@Test
 	public void outbreakConfigurationBindsTheCompleteRuleArray() throws Exception {
 		SurveillanceService service = mock(SurveillanceService.class);
 		SurveillanceController controller = new SurveillanceController();

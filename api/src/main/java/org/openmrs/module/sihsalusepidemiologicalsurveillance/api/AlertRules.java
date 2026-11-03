@@ -15,7 +15,7 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.*;
 public class AlertRules {
 	
 	public static final List<String> PRIVILEGES = Arrays.asList(SurveillanceConstants.ACCESS, SurveillanceConstants.VIEW,
-	    SurveillanceConstants.REGISTER, SurveillanceConstants.REPORT, SurveillanceConstants.MANAGE);
+	    SurveillanceConstants.EDIT, SurveillanceConstants.REPORT, SurveillanceConstants.MANAGE);
 	
 	public static final List<String> REASONS = Arrays.asList("IMMEDIATE_EVENT", "STATUS_CHANGED", "DEATH",
 	    "CONFIRMED_PREGNANCY", "EPIDEMIC_THRESHOLD", "SUSTAINED_INCREASE", "AUTOCHTHONOUS_ELIMINATED", "FOCUS_CASES");

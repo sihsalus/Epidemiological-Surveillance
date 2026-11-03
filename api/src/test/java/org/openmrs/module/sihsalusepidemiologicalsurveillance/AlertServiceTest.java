@@ -160,7 +160,9 @@ public class AlertServiceTest {
 		f.service.attendAlert("alert");
 		assertSame(attended, a.getAttendedAt());
 		verify(f.dao, times(1)).saveAlert(a);
-		when(f.access.require(SurveillanceConstants.MANAGE)).thenThrow(new SurveillanceException(403, "ACCESS_DENIED"));
+		verify(f.access, atLeastOnce()).require(SurveillanceConstants.EDIT);
+		verify(f.access, never()).require(SurveillanceConstants.REGISTER);
+		when(f.access.require(SurveillanceConstants.EDIT)).thenThrow(new SurveillanceException(403, "ACCESS_DENIED"));
 		try {
 			f.service.alerts(null, null, null);
 			fail();

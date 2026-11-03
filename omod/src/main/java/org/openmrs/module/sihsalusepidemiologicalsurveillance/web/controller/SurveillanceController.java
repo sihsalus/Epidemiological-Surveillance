@@ -228,12 +228,6 @@ public class SurveillanceController {
 		return service().updateDraft(uuid, body);
 	}
 	
-	@RequestMapping(value = "/cases/{uuid}/close", method = RequestMethod.POST)
-	@ResponseBody
-	public SurveillanceCaseResponse closeDraft(@PathVariable("uuid") String uuid) {
-		return service().closeDraft(uuid);
-	}
-	
 	@RequestMapping(value = "/cases/{uuid}", method = RequestMethod.GET)
 	@ResponseBody
 	public SurveillanceCaseResponse get(@PathVariable("uuid") String uuid) {

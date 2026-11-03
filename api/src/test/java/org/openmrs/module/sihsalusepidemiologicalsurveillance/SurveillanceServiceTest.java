@@ -165,6 +165,74 @@ public class SurveillanceServiceTest {
 	}
 	
 	@Test
+	public void editingRequiresTheEditPrivilegeInsteadOfRegister() {
+		SyntheticFixture f = new SyntheticFixture();
+		SurveillanceCase existing = new SurveillanceCase();
+		existing.setUuid(SyntheticFixture.uuid(99));
+		existing.setDiagnosisType("PROBABLE");
+		when(f.dao.byUuid(SurveillanceCase.class, existing.getUuid())).thenReturn(existing);
+		when(f.dao.caseByDiagnosis(f.encounterDiagnosis)).thenReturn(existing);
+		f.surveillanceRequest.deathDate = null;
+		f.service.updateDraft(existing.getUuid(), f.surveillanceRequest);
+		verify(f.access).require(SurveillanceConstants.EDIT);
+		verify(f.access, never()).require(SurveillanceConstants.REGISTER);
+	}
+
+	@Test
+	public void deniedEditDoesNotModifyTheCase() {
+		SyntheticFixture f = new SyntheticFixture();
+		doThrow(new SurveillanceException(403, "ACCESS_DENIED")).when(f.access).require(SurveillanceConstants.EDIT);
+		try {
+			f.service.updateDraft(SyntheticFixture.uuid(99), f.surveillanceRequest);
+			fail();
+		}
+		catch (SurveillanceException ex) {
+			assertEquals(403, ex.getStatus());
+		}
+		verify(f.dao, never()).save(any(SurveillanceCase.class));
+	}
+	
+	@Test
+	public void anotherUserCanEditKeepingTheRegisteringProfessional() {
+		SyntheticFixture f = new SyntheticFixture();
+		SurveillanceCase existing = new SurveillanceCase();
+		existing.setUuid(SyntheticFixture.uuid(99));
+		existing.setDiagnosisType("PROBABLE");
+		existing.setProvider(f.provider);
+		when(f.dao.byUuid(SurveillanceCase.class, existing.getUuid())).thenReturn(existing);
+		when(f.dao.caseByDiagnosis(f.encounterDiagnosis)).thenReturn(existing);
+		org.openmrs.User epidemiologist = new org.openmrs.User(2);
+		epidemiologist.setPerson(new org.openmrs.Person(2));
+		when(f.access.require(anyString())).thenReturn(epidemiologist);
+		f.surveillanceRequest.deathDate = null;
+		f.surveillanceRequest.origin = "IMPORTADO_NACIONAL";
+		f.service.updateDraft(existing.getUuid(), f.surveillanceRequest);
+		assertEquals(f.provider, existing.getProvider());
+		assertEquals(epidemiologist, existing.getChangedBy());
+		assertEquals("IMPORTADO_NACIONAL", existing.getOrigin());
+	}
+
+	@Test
+	public void editingCannotReplaceTheRegisteringProfessional() {
+		SyntheticFixture f = new SyntheticFixture();
+		SurveillanceCase existing = new SurveillanceCase();
+		existing.setUuid(SyntheticFixture.uuid(99));
+		existing.setDiagnosisType("PROBABLE");
+		existing.setProvider(f.provider);
+		when(f.dao.byUuid(SurveillanceCase.class, existing.getUuid())).thenReturn(existing);
+		when(f.dao.caseByDiagnosis(f.encounterDiagnosis)).thenReturn(existing);
+		f.surveillanceRequest.providerUuid = SyntheticFixture.uuid(77);
+		try {
+			f.service.updateDraft(existing.getUuid(), f.surveillanceRequest);
+			fail();
+		}
+		catch (SurveillanceException ex) {
+			assertEquals("INVALID_REFERENCE", ex.getCode());
+		}
+		verify(f.dao, never()).save(any(SurveillanceCase.class));
+	}
+
+	@Test
 	public void draftRejectsASecondCaseForTheSameDiagnosis() {
 		SyntheticFixture f = new SyntheticFixture();
 		SurveillanceCase existing = new SurveillanceCase();
@@ -179,30 +247,6 @@ public class SurveillanceServiceTest {
 			assertEquals("CASE_ALREADY_EXISTS_FOR_DIAGNOSIS", ex.getCode());
 		}
 		verify(f.dao, never()).save(any(SurveillanceCase.class));
-	}
-	
-	@Test
-	public void closingDraftRequiresOnlyTheRegisterPrivilegeBeforeValidation() {
-		SyntheticFixture f = new SyntheticFixture();
-		SurveillanceCase draft = new SurveillanceCase();
-		draft.setUuid(SyntheticFixture.uuid(99));
-		draft.setPatient(f.patient);
-		draft.setEncounter(f.source);
-		draft.setProvider(f.provider);
-		draft.setLocation(f.location);
-		draft.setDiagnosis(f.encounterDiagnosis);
-		when(f.dao.byUuid(SurveillanceCase.class, draft.getUuid())).thenReturn(draft);
-		
-		try {
-			f.service.closeDraft(draft.getUuid());
-			fail();
-		}
-		catch (SurveillanceException ex) {
-			assertEquals("REQUIRED_FIELDS", ex.getCode());
-		}
-		
-		verify(f.access).require(SurveillanceConstants.REGISTER);
-		verify(f.access, never()).require(SurveillanceConstants.VIEW);
 	}
 	
 	@Test

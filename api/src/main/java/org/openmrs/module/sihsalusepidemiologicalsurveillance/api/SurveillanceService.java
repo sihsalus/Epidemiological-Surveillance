@@ -120,8 +120,6 @@ public interface SurveillanceService extends OpenmrsService {
 	
 	SurveillanceCaseResponse getDraft(String uuid);
 	
-	SurveillanceCaseResponse closeDraft(String uuid);
-	
 	List<Map<String, Object>> addressChildren(String level, String parentUuid);
 	
 	@Authorized(SurveillanceConstants.VIEW)

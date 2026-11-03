@@ -58,8 +58,10 @@ public class AlertRulesTest {
 				Snapshot s = record(week(2026, 5));
 				s.notified = notified;
 				AlertRules rules = new AlertRules();
-				assertTrue(has(rules.evaluate(s, null, Collections.emptyList(), Arrays.asList(s), periodicity, metadata), "IMMEDIATE_EVENT"));
-				assertFalse(has(rules.evaluate(s, s, Arrays.asList(s), Arrays.asList(s), periodicity, metadata), "IMMEDIATE_EVENT"));
+				assertTrue(has(rules.evaluate(s, null, Collections.emptyList(), Arrays.asList(s), periodicity, metadata),
+				    "IMMEDIATE_EVENT"));
+				assertFalse(
+				    has(rules.evaluate(s, s, Arrays.asList(s), Arrays.asList(s), periodicity, metadata), "IMMEDIATE_EVENT"));
 			}
 		}
 	}
