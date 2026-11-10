@@ -16,7 +16,11 @@ public class ClinicalCatalogServiceTest {
 		ClinicalCatalogService service = new ClinicalCatalogService();
 		service.setClinical(clinical);
 		ClinicalCatalog catalog = service.get();
-		assertEquals(2, catalog.diseases.size());
+		assertEquals("America/Lima", catalog.timezone);
+		assertEquals("SUNDAY", catalog.firstDayOfWeek);
+		assertEquals(4, catalog.minimalDaysInFirstWeek);
+		assertEquals("4faa9f66-d80f-4685-9645-af206fce7fa5", catalog.icd10SourceUuid);
+		assertEquals("8d871386-c2cc-11de-8d13-0010c6dffd0f", catalog.ethnicityAttributeTypeUuid);
 		assertNull(catalog.trueConceptUuid);
 		verify(clinical, never()).concept(anyString());
 	}
@@ -24,7 +28,7 @@ public class ClinicalCatalogServiceTest {
 	@Test
 	public void eachRequestReceivesAnIndependentFixedCatalog() {
 		ClinicalCatalog first = SurveillanceCatalog.create();
-		first.diseases.clear();
-		assertEquals(2, SurveillanceCatalog.create().diseases.size());
+		first.ethnicityGroups.clear();
+		assertEquals(4, SurveillanceCatalog.create().ethnicityGroups.size());
 	}
 }

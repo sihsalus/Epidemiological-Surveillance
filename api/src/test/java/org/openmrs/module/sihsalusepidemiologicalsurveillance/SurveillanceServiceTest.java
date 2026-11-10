@@ -75,7 +75,6 @@ public class SurveillanceServiceTest {
 		verify(f.dao).counts(f.event, "dia", 2026, 2026, "CENTRO_POBLADO", null);
 		// Historical window is anchored to the current calendar year even for boundary weeks.
 		verify(f.dao).counts(f.event, "semana", 2021, 2025, "CENTRO_POBLADO", null);
-		verify(f.dao, never()).encounters(any(), any(), anyString());
 		verify(f.dao, never()).surveillanceCases();
 		verifyNoInteractions(f.clinical);
 	}
@@ -250,104 +249,18 @@ public class SurveillanceServiceTest {
 	}
 	
 	@Test
-	public void registrationCompletesExistingEncounterDiagnosisAndAudit() {
-		SyntheticFixture f = new SyntheticFixture();
-		CaseResult result = f.service.registerCase(f.request);
-		assertEquals(f.source.getUuid(), result.uuid);
-		assertEquals("A90", result.icd10);
-		assertEquals("SEMANAL", result.periodicity);
-		ArgumentCaptor<Encounter> capture = ArgumentCaptor.forClass(Encounter.class);
-		verify(f.clinical).saveEncounter(capture.capture());
-		Encounter e = capture.getValue();
-		assertSame(f.source, e);
-		assertEquals(5, e.getAllObs(false).size());
-		assertEquals(f.source.getUuid(), e.getUuid());
-		verify(f.clinical).saveDiagnosis(any(Diagnosis.class));
-		org.mockito.InOrder order = inOrder(f.dao, f.clinical);
-		order.verify(f.dao).lockPatient(f.patient);
-		order.verify(f.dao).lockEvent(f.event);
-		order.verify(f.clinical).saveEncounter(any(Encounter.class));
-	}
-	
-	@Test
-	public void registrationAcceptsAnEncounterOfAnyType() {
-		SyntheticFixture f = new SyntheticFixture();
-		EncounterType otherType = new EncounterType();
-		otherType.setUuid(SyntheticFixture.uuid(90));
-		f.source.setEncounterType(otherType);
-		assertEquals(f.source.getUuid(), f.service.registerCase(f.request).uuid);
-		verify(f.clinical).saveEncounter(f.source);
-	}
-	
-	@Test
-	public void preservesExistingPregnancyObservationAndMatchingDiagnosis() {
-		SyntheticFixture f = new SyntheticFixture();
-		Obs pregnancy = new Obs(f.patient, f.clinical.concept(f.m.questions.get("pregnancy")),
-		        f.source.getEncounterDatetime(), f.location);
-		pregnancy.setValueCoded(f.clinical.trueConcept());
-		f.source.addObs(pregnancy);
-		Diagnosis existing = new Diagnosis();
-		existing.setDiagnosis(new CodedOrFreeText(f.diagnosis, null, null));
-		f.source.setDiagnoses(new HashSet<Diagnosis>(Arrays.asList(existing)));
-		f.service.registerCase(f.request);
-		assertSame(pregnancy, CaseObservations.find(f.source, f.m.questions.get("pregnancy")));
-		assertSame(existing, f.source.getDiagnoses().iterator().next());
-		verify(f.clinical, never()).saveDiagnosis(any(Diagnosis.class));
-	}
-	
-	@Test
-	public void duplicatePreventsAnyClinicalWrite() {
-		SyntheticFixture f = new SyntheticFixture();
-		when(f.dao.possibleDuplicates(any(), anyList(), any(), any(), anyString())).thenReturn(Arrays.asList(f.source));
-		try {
-			f.service.registerCase(f.request);
-			fail();
-		}
-		catch (SurveillanceException ex) {
-			assertEquals("POSSIBLE_DUPLICATE", ex.getCode());
-		}
-		verify(f.clinical, never()).saveEncounter(any());
-	}
-	
-	@Test
-	public void retryReturnsSameEncounterWithoutSecondWrite() {
-		SyntheticFixture f = new SyntheticFixture();
-		f.service.registerCase(f.request);
-		ArgumentCaptor<Encounter> capture = ArgumentCaptor.forClass(Encounter.class);
-		verify(f.clinical).saveEncounter(capture.capture());
-		assertTrue(f.service.registerCase(f.request).replayed);
-		verify(f.clinical, times(1)).saveEncounter(any());
-	}
-	
-	@Test
-	public void changedPayloadCannotOverwriteSuccessfulRequest() {
-		SyntheticFixture f = new SyntheticFixture();
-		f.service.registerCase(f.request);
-		ArgumentCaptor<Encounter> capture = ArgumentCaptor.forClass(Encounter.class);
-		verify(f.clinical).saveEncounter(capture.capture());
-		f.request.severity = "SEVERE";
-		try {
-			f.service.registerCase(f.request);
-			fail();
-		}
-		catch (SurveillanceException ex) {
-			assertEquals("IDEMPOTENCY_CONFLICT", ex.getCode());
-		}
-		verify(f.clinical, times(1)).saveEncounter(any());
-	}
-	
-	@Test
 	public void deniedWriteDoesNotReadClinicalData() {
 		SyntheticFixture f = new SyntheticFixture();
 		doThrow(new SurveillanceException(403, "ACCESS_DENIED")).when(f.access).require(SurveillanceConstants.REGISTER);
 		try {
-			f.service.registerCase(f.request);
+			f.service.createDraft(f.surveillanceRequest);
 			fail();
 		}
 		catch (SurveillanceException ex) {
 			assertEquals(403, ex.getStatus());
 		}
 		verify(f.clinical, never()).patient(anyString());
+		verify(f.dao, never()).save(any(SurveillanceCase.class));
 	}
 	
 	@Test
@@ -361,18 +274,8 @@ public class SurveillanceServiceTest {
 		catch (SurveillanceException ex) {
 			assertEquals(403, ex.getStatus());
 		}
-		verify(f.dao, never()).encounters(any(), any(), anyString());
-	}
-	
-	@Test
-	public void severeCaseOverridesConfiguredWeeklyPeriodicity() {
-		SyntheticFixture f = new SyntheticFixture();
-		f.request.severity = "SEVERE";
-		CaseResult result = f.service.registerCase(f.request);
-		assertEquals("inmediata", result.periodicity);
-		assertEquals(0, result.deadlineDays);
-		assertTrue(result.immediateAlerts.contains("SEVERE_CASE"));
-		verify(f.clinical).alert(eq(f.actor), anyString());
+		verify(f.dao, never()).surveillanceCases();
+		verify(f.dao, never()).counts(any(), anyString(), anyInt(), anyInt(), anyString(), any());
 	}
 	
 	@Test
@@ -396,29 +299,27 @@ public class SurveillanceServiceTest {
 	}
 	
 	@Test
-	public void confirmedRegistrationTriggersCountRefreshForThatEvent() {
+	public void draftAcceptsADiagnosisConfiguredDirectlyAsTheEvent() {
 		SyntheticFixture f = new SyntheticFixture();
-		f.m.surveillanceStartDate = "2026-01-01";
-		f.lab(true);
-		f.request.status = "CONFIRMED";
-		f.service.registerCase(f.request);
-		verify(f.dao).replaceCounts(eq(f.event), argThat(counts -> !counts.isEmpty()));
+		f.event.setConcept(f.diagnosis);
+		f.service.createDraft(f.surveillanceRequest);
+		verify(f.dao).save(any(SurveillanceCase.class));
+		verify(f.dao).lockEvent(f.event);
 	}
 	
 	@Test
-	public void suspectedRegistrationDoesNotTriggerCountRefresh() {
+	public void draftRejectsADiagnosisThatIsNotANotifiableEvent() {
 		SyntheticFixture f = new SyntheticFixture();
-		f.m.surveillanceStartDate = "2026-01-01";
-		f.service.registerCase(f.request); // status = SUSPECTED by default
-		verify(f.dao, never()).replaceCounts(any(), anyList());
-	}
-	
-	@Test
-	public void dynamicEventWithoutStaticDiseaseUsesEventConceptAsDiagnosis() {
-		SyntheticFixture f = new SyntheticFixture();
-		// Remove disease from catalog so it's purely dynamic
-		f.m.diseases.clear();
-		CaseResult result = f.service.registerCase(f.request);
-		assertEquals(f.event.getConcept().getUuid(), result.diagnosisConceptUuid);
+		f.event.setConcept(SyntheticFixture.concept(16));
+		try {
+			f.service.createDraft(f.surveillanceRequest);
+			fail();
+		}
+		catch (SurveillanceException ex) {
+			assertEquals(422, ex.getStatus());
+			assertEquals("INVALID_REFERENCE", ex.getCode());
+			assertEquals(Collections.singletonList("diagnosisUuid"), ex.getFields());
+		}
+		verify(f.dao, never()).save(any(SurveillanceCase.class));
 	}
 }

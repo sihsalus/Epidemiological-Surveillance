@@ -7,8 +7,6 @@ import java.util.UUID;
 import org.hibernate.criterion.Order;
 import org.hibernate.criterion.Restrictions;
 import org.openmrs.BaseOpenmrsObject;
-import org.openmrs.Encounter;
-import org.openmrs.Patient;
 import org.openmrs.api.db.hibernate.DbSessionFactory;
 import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.*;
 
@@ -254,35 +252,6 @@ public class HibernateSurveillanceDao implements SurveillanceDao {
 		            "select notifiable_event_id from notifiable_event where notifiable_event_id = :id for update")
 		        .setInteger("id", event.getId()).uniqueResult();
 		sessionFactory.getCurrentSession().refresh(event);
-	}
-	
-	@Override
-	public void lockPatient(Patient patient) {
-		sessionFactory.getCurrentSession().createSQLQuery("select patient_id from patient where patient_id = :id for update")
-		        .setInteger("id", patient.getId()).uniqueResult();
-	}
-	
-	@Override
-	@SuppressWarnings("unchecked")
-	public List<Encounter> encounters(Date from, Date to, String onset) {
-		return sessionFactory.getCurrentSession().createQuery(
-		    "select distinct e from Diagnosis d join d.encounter e join e.obs o where d.voided = false and e.voided = false "
-		            + "and e.patient.voided = false and o.voided = false "
-		            + "and o.concept.uuid = :onset and o.valueDatetime >= :from and o.valueDatetime < :to")
-		        .setString("onset", onset).setTimestamp("from", from).setTimestamp("to", to).list();
-	}
-	
-	@Override
-	@SuppressWarnings("unchecked")
-	public List<Encounter> possibleDuplicates(Patient patient, List<String> diagnoses, Date from, Date to, String onset) {
-		return sessionFactory.getCurrentSession()
-		        .createQuery("select distinct d.encounter from Diagnosis d, Obs o "
-		                + "where d.encounter = o.encounter and d.voided = false and d.encounter.voided = false "
-		                + "and d.encounter.patient = :patient "
-		                + "and d.diagnosis.coded.uuid in (:diagnoses) and o.voided = false and o.concept.uuid = :onset "
-		                + "and o.valueDatetime >= :from and o.valueDatetime < :to")
-		        .setParameter("patient", patient).setParameterList("diagnoses", diagnoses).setString("onset", onset)
-		        .setTimestamp("from", from).setTimestamp("to", to).list();
 	}
 	
 	@Override

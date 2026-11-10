@@ -23,18 +23,12 @@ elimina antes de outbreak_alert_rule por oa_rule_fk. Las FK salientes se elimina
 sus tablas; no se eliminan las tablas padre del núcleo. No se usa CASCADE ni se
 deshabilitan las claves foráneas.
 
-## Compatibilidad del servicio
-Se mantienen registerCase() y getCase() del servicio público. Su evaluación lee
-OutbreakRuleConfiguration y usa percentil, número de semanas, origen, clasificación
-de foco y mínimo de casos configurados, en lugar de consultar outbreak_alert_rule.
-CONSECUTIVE exige superar el percentil durante las semanas configuradas, igual que
-la configuración vigente; no introduce una condición adicional de crecimiento.
-La ventana de consulta se ajusta al número de semanas configurado.
-
-La proyección antigua de encuentros no identifica el centro poblado. Por ello conserva
-FOCUS_UNKNOWN y no sustituye una sede asistencial por un foco geográfico. FocusStatus
-es un valor transitorio del evaluador, sin tabla ni mapeo Hibernate. El flujo actual
-de casos y alertas conserva su cálculo geográfico desde surveillance_case.
+## Flujo de registro anterior
+Se retiraron registerCase() y getCase(), junto con OutbreakEngine, CaseValidator,
+CaseObservations y los modelos CaseRequest/CaseResult/CaseRecord. Ese flujo registraba
+casos como Obs de encuentro y no era invocado por el controlador. El flujo vigente
+persiste los casos en surveillance_case y evalúa alertas con AlertRules a partir de
+OutbreakRuleConfiguration.
 
 ## Protección de la migración
 VerifyUnusedSurveillanceTables comprueba, antes del primer DDL:

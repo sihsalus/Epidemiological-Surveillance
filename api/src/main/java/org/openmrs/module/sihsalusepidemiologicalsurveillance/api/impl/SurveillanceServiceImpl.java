@@ -1,7 +1,5 @@
 package org.openmrs.module.sihsalusepidemiologicalsurveillance.api.impl;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.*;
 import java.util.*;
 
@@ -57,17 +55,30 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 	private boolean alertEventMatches(NotifiableEvent event, SurveillanceCase value) {
 		if (value.getDiagnosis() == null || value.getDiagnosis().getDiagnosis() == null)
 			return false;
-		Concept concept = value.getDiagnosis().getDiagnosis().getCoded();
-		if (concept == null || event.getConcept() == null)
-			return false;
-		if (event.getConcept().equals(concept) || event.getConcept().getSetMembers().contains(concept))
-			return true;
-		for (ClinicalCatalog.Disease disease : catalog.get().diseases)
-			if (event.getUuid().equals(disease.eventUuid))
-				for (ClinicalCatalog.DiagnosisMapping mapping : disease.diagnoses)
-					if (concept.getUuid().equals(mapping.diagnosisConceptUuid))
-						return true;
-		return false;
+		return covers(event, value.getDiagnosis().getDiagnosis().getCoded());
+	}
+	
+	/**
+	 * Each notifiable event is the diagnosis configured by epidemiology, or a concept set of diagnoses.
+	 */
+	private static boolean covers(NotifiableEvent event, Concept concept) {
+		return concept != null && event.getConcept() != null
+		        && (event.getConcept().equals(concept) || event.getConcept().getSetMembers().contains(concept));
+	}
+	
+	/**
+	 * Diagnosis concept UUID to notifiable event UUID; a direct event concept wins over set membership.
+	 */
+	private Map<String, String> eventsByDiagnosis() {
+		Map<String, String> result = new HashMap<String, String>();
+		for (NotifiableEvent event : dao.events())
+			if (event.getConcept() != null)
+				for (Concept member : event.getConcept().getSetMembers())
+					result.put(member.getUuid(), event.getUuid());
+		for (NotifiableEvent event : dao.events())
+			if (event.getConcept() != null)
+				result.put(event.getConcept().getUuid(), event.getUuid());
+		return result;
 	}
 	
 	private Map<String, List<AlertRules.Snapshot>> alertSnapshots(ClinicalCatalog metadata) {
@@ -254,16 +265,10 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		if (ClinicalCatalogService.present(address) && addressId == null)
 			throw new SurveillanceException(422, "INVALID_REPORT_ADDRESS");
 		NotifiableEvent selected = null;
-		Map<String, String> diseases = new HashMap<String, String>();
-		for (ClinicalCatalog.Disease disease : metadata.diseases)
-			for (ClinicalCatalog.DiagnosisMapping mapping : disease.diagnoses)
-				diseases.put(mapping.diagnosisConceptUuid, disease.eventUuid);
-		for (NotifiableEvent event : dao.events()) {
-			if (event.getConcept() != null)
-				diseases.put(event.getConcept().getUuid(), event.getUuid());
+		Map<String, String> diseases = eventsByDiagnosis();
+		for (NotifiableEvent event : dao.events())
 			if (event.getUuid().equals(eventUuid))
 				selected = event;
-		}
 		if (selected == null)
 			throw new SurveillanceException(422, "INVALID_DEMOGRAPHIC_EVENTS");
 		List<SurveillanceCase> cohort = new ArrayList<SurveillanceCase>();
@@ -399,17 +404,11 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		        : null;
 		if (ClinicalCatalogService.present(address) && addressId == null)
 			throw new SurveillanceException(422, "INVALID_REPORT_ADDRESS");
-		Map<String, String> diseases = new HashMap<String, String>();
-		for (ClinicalCatalog.Disease disease : catalog.get().diseases)
-			for (ClinicalCatalog.DiagnosisMapping mapping : disease.diagnoses)
-				diseases.put(mapping.diagnosisConceptUuid, disease.eventUuid);
+		Map<String, String> diseases = eventsByDiagnosis();
 		boolean found = false;
-		for (NotifiableEvent event : dao.events()) {
-			if (event.getConcept() != null)
-				diseases.put(event.getConcept().getUuid(), event.getUuid());
+		for (NotifiableEvent event : dao.events())
 			if (event.getUuid().equals(eventUuid))
 				found = true;
-		}
 		if (!found)
 			throw new SurveillanceException(422, "INVALID_EVENT");
 		List<GeographicCalculator.Record> records = new ArrayList<GeographicCalculator.Record>();
@@ -552,20 +551,12 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 			selected.add(eventUuid);
 		}
 		Map<String, String> labels = new LinkedHashMap<String, String>();
-		Map<String, String> direct = new HashMap<String, String>();
-		for (NotifiableEvent event : dao.events()) {
-			if (event.getConcept() == null)
-				continue;
-			direct.put(event.getConcept().getUuid(), event.getUuid());
-			if (selected.contains(event.getUuid()))
+		for (NotifiableEvent event : dao.events())
+			if (event.getConcept() != null && selected.contains(event.getUuid()))
 				labels.put(event.getUuid(), event.getConcept().getDisplayString());
-		}
 		if (labels.size() != selected.size())
 			throw new SurveillanceException(422, "INVALID_DEMOGRAPHIC_EVENTS");
-		Map<String, String> mapped = new HashMap<String, String>();
-		for (ClinicalCatalog.Disease disease : metadata.diseases)
-			for (ClinicalCatalog.DiagnosisMapping mapping : disease.diagnoses)
-				mapped.put(mapping.diagnosisConceptUuid, disease.eventUuid);
+		Map<String, String> diseases = eventsByDiagnosis();
 		List<DemographicCalculator.Record> records = new ArrayList<DemographicCalculator.Record>();
 		Map<String, String> ethnicities = new HashMap<String, String>();
 		int undated = 0;
@@ -576,7 +567,7 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 			        || !"TODOS".equals(diagnosisType) && !diagnosisType.equals(value.getDiagnosisType()))
 				continue;
 			String concept = value.getDiagnosis().getDiagnosis().getCoded().getUuid();
-			String disease = direct.containsKey(concept) ? direct.get(concept) : mapped.get(concept);
+			String disease = diseases.get(concept);
 			if (!selected.contains(disease))
 				continue;
 			if (addressId != null) {
@@ -666,13 +657,7 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 	
 	private SurveillanceAccess access;
 	
-	private CaseValidator validator;
-	
-	private final CaseObservations reader = new CaseObservations();
-	
 	private final ReportCalculator calculator = new ReportCalculator();
-	
-	private final OutbreakEngine engine = new OutbreakEngine();
 	
 	public void setDao(SurveillanceDao value) {
 		dao = value;
@@ -690,10 +675,6 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		access = value;
 	}
 	
-	public void setValidator(CaseValidator value) {
-		validator = value;
-	}
-	
 	@Override
 	public Map<String, Object> getCatalog() {
 		access.require(SurveillanceConstants.ACCESS);
@@ -701,20 +682,9 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		Map<String, Object> response = new LinkedHashMap<String, Object>();
 		response.put("catalog", m);
 		List<Map<String, Object>> events = new ArrayList<Map<String, Object>>();
-		Set<String> includedUuids = new HashSet<String>();
-		for (ClinicalCatalog.Disease disease : m.diseases) {
-			NotifiableEvent event = dao.byUuid(NotifiableEvent.class, disease.eventUuid);
-			if (event != null && !event.isRetired()) {
+		for (NotifiableEvent event : dao.events())
+			if (!event.isRetired())
 				events.add(eventJson(event));
-				includedUuids.add(event.getUuid());
-			}
-		}
-		for (NotifiableEvent event : dao.events()) {
-			if (!event.isRetired() && !includedUuids.contains(event.getUuid())) {
-				events.add(eventJson(event));
-				includedUuids.add(event.getUuid());
-			}
-		}
 		response.put("events", events);
 		return response;
 	}
@@ -1072,20 +1042,19 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		Concept concept = diagnosis.getDiagnosis() == null ? null : diagnosis.getDiagnosis().getCoded();
 		if (concept == null)
 			throw new SurveillanceException(422, "INVALID_REFERENCE", "diagnosisUuid", "selection");
-		Set<String> mappedEvents = new HashSet<String>();
-		for (ClinicalCatalog.Disease disease : catalog.get().diseases)
-			for (ClinicalCatalog.DiagnosisMapping mapping : disease.diagnoses)
-				if (concept.getUuid().equals(mapping.diagnosisConceptUuid))
-					mappedEvents.add(disease.eventUuid);
-		for (NotifiableEvent event : dao.events()) {
-			if (concept.equals(event.getConcept()) || mappedEvents.contains(event.getUuid())) {
-				dao.lockEvent(event);
-				if (!event.isActive())
-					throw new SurveillanceException(409, "EVENT_RETIRED");
-				return;
-			}
-		}
-		throw new SurveillanceException(422, "INVALID_REFERENCE", "diagnosisUuid", "selection");
+		NotifiableEvent event = null;
+		List<NotifiableEvent> events = dao.events();
+		for (NotifiableEvent candidate : events)
+			if (event == null && concept.equals(candidate.getConcept()))
+				event = candidate;
+		for (NotifiableEvent candidate : events)
+			if (event == null && covers(candidate, concept))
+				event = candidate;
+		if (event == null)
+			throw new SurveillanceException(422, "INVALID_REFERENCE", "diagnosisUuid", "selection");
+		dao.lockEvent(event);
+		if (!event.isActive())
+			throw new SurveillanceException(409, "EVENT_RETIRED");
 	}
 	
 	private String residenceDisplay(String residence) {
@@ -1242,172 +1211,6 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 	}
 	
 	@Override
-	public CaseResult registerCase(CaseRequest request) {
-		User actor = access.require(SurveillanceConstants.REGISTER);
-		access.require(SurveillanceConstants.VIEW);
-		ClinicalCatalog m = catalog.get();
-		// Resolve only identity first so a replay remains valid after a visit closes or a lab result is corrected.
-		if (request == null || !ClinicalCatalogService.present(request.patientUuid)
-		        || !ClinicalCatalogService.present(request.uuid))
-			throw new SurveillanceException(422, "REQUIRED_FIELDS");
-		Patient patient = clinical.patient(request.patientUuid);
-		if (patient == null || patient.getVoided())
-			throw new SurveillanceException(422, "INVALID_REFERENCE");
-		dao.lockPatient(patient);
-		Encounter existing = clinical.encounter(request.sourceEncounterUuid);
-		if (existing != null && !existing.getVoided() && patient.equals(existing.getPatient())) {
-			Obs onset = CaseObservations.find(existing, m.questions.get("onset"));
-			if (onset != null && (onset.getCreator() == null || !onset.getCreator().equals(actor)
-			        || !fingerprint(request).equals(onset.getComment())))
-				throw new SurveillanceException(409, "IDEMPOTENCY_CONFLICT");
-			if (onset != null) {
-				CaseResult result = assess(existing, m);
-				result.replayed = true;
-				return result;
-			}
-		}
-		CaseValidator.Validated v = validator.validate(request, m, actor);
-		EpidemiologicalCalendar calendar = new EpidemiologicalCalendar(m);
-		List<String> diagnoses = new ArrayList<String>();
-		if (v.disease != null && v.disease.diagnoses != null && !v.disease.diagnoses.isEmpty()) {
-			for (ClinicalCatalog.DiagnosisMapping mapping : v.disease.diagnoses)
-				diagnoses.add(mapping.diagnosisConceptUuid);
-		} else if (v.diagnosis != null) {
-			diagnoses.add(v.diagnosis.getUuid());
-		}
-		if (!diagnoses.isEmpty()
-		        && !dao.possibleDuplicates(v.patient, diagnoses, calendar.date(v.onset.minusDays(m.duplicateWindowDays)),
-		            calendar.date(v.onset.plusDays(m.duplicateWindowDays + 1)), m.questions.get("onset")).isEmpty())
-			throw new SurveillanceException(409, "POSSIBLE_DUPLICATE",
-			        Arrays.asList("patientUuid", "eventUuid", "onsetDate"));
-		NotifiableEvent event = dao.byUuid(NotifiableEvent.class, request.eventUuid);
-		if (event == null)
-			throw new SurveillanceException(404, "EVENT_NOT_FOUND");
-		// Serialize threshold crossings across patients; READ_COMMITTED observes the preceding commit after waiting.
-		dao.lockEvent(event);
-		if (event.isRetired())
-			throw new SurveillanceException(409, "EVENT_RETIRED");
-		Encounter encounter = v.source;
-		coded(encounter, m, "event", event.getConcept());
-		coded(encounter, m, "status",
-		    clinical.concept(ClinicalCatalogService.choice(m.statuses, request.status).conceptUuid));
-		coded(encounter, m, "origin",
-		    clinical.concept(ClinicalCatalogService.choice(m.origins, request.origin).conceptUuid));
-		if (v.disease != null && !v.disease.severities.isEmpty() && ClinicalCatalogService.present(request.severity))
-			coded(encounter, m, "severity",
-			    clinical.concept(ClinicalCatalogService.choice(v.disease.severities, request.severity).conceptUuid));
-		if (v.disease != null && !v.disease.species.isEmpty() && ClinicalCatalogService.present(request.species))
-			coded(encounter, m, "species",
-			    clinical.concept(ClinicalCatalogService.choice(v.disease.species, request.species).conceptUuid));
-		Obs onset = obs(encounter, m, "onset");
-		onset.setValueDatetime(calendar.date(v.onset));
-		onset.setComment(fingerprint(request));
-		onset.setCreator(actor);
-		if (v.laboratory != null) {
-			Obs reference = text(encounter, m, "laboratoryResult", v.laboratory.getUuid());
-			reference.setOrder(v.laboratory.getOrder());
-		}
-		if (v.ethnicity != null && CaseObservations.find(encounter, m.questions.get("ethnicity")) == null)
-			coded(encounter, m, "ethnicity", clinical.concept(v.ethnicity));
-		if (v.pregnant != null && CaseObservations.find(encounter, m.questions.get("pregnancy")) == null)
-			obs(encounter, m, "pregnancy").setValueCoded(v.pregnant ? clinical.trueConcept() : clinical.falseConcept());
-		clinical.saveEncounter(encounter);
-		Diagnosis diagnosis = null;
-		Set<Diagnosis> encounterDiagnoses = encounter.getDiagnoses();
-		if (encounterDiagnoses == null) {
-			encounterDiagnoses = new HashSet<Diagnosis>();
-			encounter.setDiagnoses(encounterDiagnoses);
-		}
-		for (Diagnosis candidate : encounterDiagnoses)
-			if (!candidate.getVoided() && candidate.getDiagnosis() != null
-			        && v.diagnosis.equals(candidate.getDiagnosis().getCoded())) {
-				diagnosis = candidate;
-				break;
-			}
-		if (diagnosis == null && !"DISCARDED".equals(request.status)) {
-			diagnosis = new Diagnosis();
-			diagnosis.setEncounter(encounter);
-			diagnosis.setPatient(v.patient);
-			diagnosis.setDiagnosis(new CodedOrFreeText(v.diagnosis, null, null));
-			diagnosis.setRank(1);
-			diagnosis.setCertainty("CONFIRMED".equals(request.status) ? ConditionVerificationStatus.CONFIRMED
-			        : ConditionVerificationStatus.PROVISIONAL);
-			clinical.saveDiagnosis(diagnosis);
-		}
-		if (diagnosis != null)
-			encounterDiagnoses.add(diagnosis);
-		CaseResult result = assess(encounter, m);
-		if (!result.immediateAlerts.isEmpty() || !result.outbreakAlerts.isEmpty())
-			clinical.alert(actor, "Vigilancia epidemiologica: revisar alertas del registro " + encounter.getUuid());
-		if ("CONFIRMED".equals(request.status))
-			refreshCountsForEvent(event, m);
-		return result;
-	}
-	
-	@Override
-	public CaseResult getCase(String uuid) {
-		User actor = access.require(SurveillanceConstants.VIEW);
-		ClinicalCatalog m = catalog.get();
-		Encounter encounter = clinical.encounter(uuid);
-		if (encounter == null || encounter.getVoided() || CaseObservations.find(encounter, m.questions.get("event")) == null)
-			throw new SurveillanceException(404, "CASE_NOT_FOUND");
-		return assess(encounter, m);
-	}
-	
-	private CaseResult assess(Encounter encounter, ClinicalCatalog m) {
-		Map<String, String> eventMap = eventConcepts();
-		CaseRecord record = reader.read(encounter, m, eventMap);
-		NotifiableEvent event = dao.byUuid(NotifiableEvent.class, record.eventUuid);
-		if (event == null || record.onset == null)
-			throw new SurveillanceException(422, "INVALID_CASE_DATA");
-		CaseResult result = new CaseResult();
-		result.uuid = encounter.getUuid();
-		ClinicalCatalog.Disease disease = ClinicalCatalogService.disease(m, record.eventUuid);
-		if (disease != null) {
-			String species = CaseObservations.choiceKey(disease.species, CaseObservations.coded(encounter, m, "species"));
-			ClinicalCatalog.DiagnosisMapping selected = null;
-			for (ClinicalCatalog.DiagnosisMapping mapping : disease.diagnoses)
-				if (Objects.equals(mapping.severity, record.severity) && Objects.equals(mapping.species, species)) {
-					selected = mapping;
-					break;
-				}
-			if (selected == null && "SEVERE".equals(record.severity))
-				for (ClinicalCatalog.DiagnosisMapping mapping : disease.diagnoses)
-					if ("SEVERE".equals(mapping.severity) && mapping.species == null)
-						selected = mapping;
-			if (selected == null)
-				throw new SurveillanceException(422, "INVALID_CASE_DATA");
-			result.diagnosisConceptUuid = selected.diagnosisConceptUuid;
-			result.icd10 = selected.icd10Code;
-		} else {
-			// Dynamic event not in the static catalog: use the event concept as diagnosis.
-			org.openmrs.Concept concept = event.getConcept();
-			if (concept == null || concept.getRetired())
-				throw new SurveillanceException(422, "INVALID_CASE_DATA");
-			result.diagnosisConceptUuid = concept.getUuid();
-			result.icd10 = ClinicalCatalogService.icd10OrNull(concept, m);
-		}
-		result.periodicity = event.getPeriodicity();
-		result.deadlineDays = event.getDeadlineDays();
-		EpidemiologicalCalendar calendar = new EpidemiologicalCalendar(m);
-		LocalDate week = calendar.start(record.onset, "semana");
-		List<OutbreakRule> rules = configuredOutbreakRules();
-		int lookback = rules.stream().filter(r -> r.weeks != null).mapToInt(r -> r.weeks).max().orElse(1) - 1;
-		List<CaseRecord> recent = records(m, week.minusWeeks(lookback), week.plusWeeks(1), eventMap);
-		if (recent.stream().noneMatch(r -> record.encounterUuid.equals(r.encounterUuid)))
-			recent.add(record);
-		List<PeriodCaseCount> history = dao.counts(event, "semana",
-		    calendar.year(week.minusWeeks(lookback), "semana") - m.historicalYears, calendar.year(week, "semana") - 1);
-		// Legacy encounter projection has no populated-center identity; do not substitute a service location.
-		engine.evaluate(record, null, rules, recent, history, m, result);
-		if (!result.immediateAlerts.isEmpty()) {
-			result.periodicity = "inmediata";
-			result.deadlineDays = 0;
-		}
-		return result;
-	}
-	
-	@Override
 	public SurveillanceReport report(String eventUuid, String from, String to, String period) {
 		return report(eventUuid, from, to, period, "CENTRO_POBLADO", null, "CONFIRMADO");
 	}
@@ -1514,83 +1317,6 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 			    calculator.aggregateSurveillanceCases(event, cases, districts, m, actor, calendar.today()));
 	}
 	
-	/** Called internally (within the REGISTER transaction) to refresh counts for a single event. */
-	private void refreshCountsForEvent(NotifiableEvent event, ClinicalCatalog m) {
-		try {
-			EpidemiologicalCalendar calendar = new EpidemiologicalCalendar(m);
-			LocalDate start = LocalDate.parse(m.surveillanceStartDate), today = calendar.today();
-			List<CaseRecord> records = records(m, start, today.plusDays(1), eventConcepts());
-			dao.replaceCounts(event, calculator.aggregate(event, records, m, today));
-		}
-		catch (Exception ex) {
-			// Count refresh is best-effort; a failure must not roll back case registration.
-			org.apache.commons.logging.LogFactory.getLog(getClass())
-			        .warn("refreshCountsForEvent failed for event " + event.getUuid(), ex);
-		}
-	}
-	
-	private List<CaseRecord> records(ClinicalCatalog m, LocalDate from, LocalDate until, Map<String, String> events) {
-		EpidemiologicalCalendar calendar = new EpidemiologicalCalendar(m);
-		List<CaseRecord> records = new ArrayList<CaseRecord>();
-		for (Encounter encounter : dao.encounters(calendar.date(from), calendar.date(until), m.questions.get("onset"))) {
-			CaseRecord record = reader.read(encounter, m, events);
-			if (record.eventUuid != null)
-				records.add(record);
-		}
-		return records;
-	}
-	
-	private Map<String, String> eventConcepts() {
-		Map<String, String> values = new HashMap<String, String>();
-		for (NotifiableEvent event : dao.events())
-			values.put(event.getConcept().getUuid(), event.getUuid());
-		return values;
-	}
-	
-	private Obs obs(Encounter e, ClinicalCatalog m, String key) {
-		Concept question = clinical.concept(m.questions.get(key));
-		if (question == null || question.getRetired())
-			throw new SurveillanceException(503, "CLINICAL_CONCEPT_UNAVAILABLE", Arrays.asList(key));
-		String datatype = "onset".equals(key) ? "Date" : "laboratoryResult".equals(key) ? "Text" : "Coded";
-		if (question.getDatatype() == null || !datatype.equals(question.getDatatype().getName()))
-			throw new SurveillanceException(503, "CLINICAL_DATATYPE_MISMATCH", Arrays.asList(key));
-		Obs obs = new Obs(e.getPatient(), question, e.getEncounterDatetime(), e.getLocation());
-		e.addObs(obs);
-		return obs;
-	}
-	
-	private void coded(Encounter e, ClinicalCatalog m, String key, Concept value) {
-		if (value == null || value.getRetired())
-			throw new SurveillanceException(503, "CLINICAL_CONCEPT_UNAVAILABLE", Arrays.asList(key));
-		obs(e, m, key).setValueCoded(value);
-	}
-	
-	private Obs text(Encounter e, ClinicalCatalog m, String key, String value) {
-		Obs obs = obs(e, m, key);
-		obs.setValueText(value);
-		return obs;
-	}
-	
-	public static String fingerprint(CaseRequest r) {
-		try {
-			StringBuilder canonical = new StringBuilder();
-			for (String value : Arrays.asList(r.uuid, r.patientUuid, r.sourceEncounterUuid, r.providerUuid, r.locationUuid,
-			    r.eventUuid, r.status, r.severity, r.origin, r.species, r.onsetDate, r.laboratoryResultUuid)) {
-				String text = value == null ? "" : value;
-				canonical.append(text.length()).append(':').append(text);
-			}
-			byte[] digest = MessageDigest.getInstance("SHA-256")
-			        .digest(canonical.toString().getBytes(StandardCharsets.UTF_8));
-			StringBuilder hex = new StringBuilder();
-			for (byte b : digest)
-				hex.append(String.format("%02x", b & 255));
-			return hex.toString();
-		}
-		catch (Exception ex) {
-			throw new IllegalStateException("Fingerprint unavailable");
-		}
-	}
-	
 	@Override
 	public Map<String, Object> saveEvent(Map<String, Object> body) {
 		access.require(SurveillanceConstants.MANAGE);
@@ -1678,6 +1404,20 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		value.put("deadlineDays", event.getDeadlineDays());
 		value.put("referenceRegulation", event.getReferenceRegulation());
 		value.put("active", event.isActive());
+		value.put("diagnosisConceptUuids", diagnosisConceptUuids(event));
 		return value;
+	}
+	
+	/**
+	 * The event concept and, when it is a concept set, its members; read from OpenMRS, never configured
+	 * here.
+	 */
+	private static List<String> diagnosisConceptUuids(NotifiableEvent event) {
+		List<String> uuids = new ArrayList<String>();
+		uuids.add(event.getConcept().getUuid());
+		for (Concept member : event.getConcept().getSetMembers())
+			if (!member.getRetired() && !uuids.contains(member.getUuid()))
+				uuids.add(member.getUuid());
+		return uuids;
 	}
 }

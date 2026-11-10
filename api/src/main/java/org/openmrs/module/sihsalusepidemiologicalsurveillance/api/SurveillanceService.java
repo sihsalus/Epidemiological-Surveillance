@@ -101,10 +101,6 @@ public interface SurveillanceService extends OpenmrsService {
 	@Authorized(SurveillanceConstants.MANAGE)
 	Map<String, Object> updateEvent(String uuid, Map<String, Object> body);
 	
-	@Authorized(SurveillanceConstants.REGISTER)
-	@Transactional(isolation = Isolation.READ_COMMITTED)
-	CaseResult registerCase(CaseRequest request);
-	
 	@Transactional(isolation = Isolation.READ_COMMITTED)
 	SurveillanceCaseResponse createDraft(SurveillanceCaseRequest request);
 	
@@ -121,9 +117,6 @@ public interface SurveillanceService extends OpenmrsService {
 	SurveillanceCaseResponse getDraft(String uuid);
 	
 	List<Map<String, Object>> addressChildren(String level, String parentUuid);
-	
-	@Authorized(SurveillanceConstants.VIEW)
-	CaseResult getCase(String uuid);
 	
 	@Authorized(SurveillanceConstants.REPORT)
 	SurveillanceReport report(String eventUuid, String from, String to, String period);

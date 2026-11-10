@@ -30,14 +30,6 @@ public class ClinicalData {
 		return Context.getOrderService().getOrderByUuid(uuid);
 	}
 	
-	public EncounterType encounterType(String uuid) {
-		return Context.getEncounterService().getEncounterTypeByUuid(uuid);
-	}
-	
-	public EncounterRole encounterRole(String uuid) {
-		return Context.getEncounterService().getEncounterRoleByUuid(uuid);
-	}
-	
 	public Location location(String uuid) {
 		return Context.getLocationService().getLocationByUuid(uuid);
 	}
@@ -52,18 +44,6 @@ public class ClinicalData {
 	
 	public PersonAttributeType attributeType(String uuid) {
 		return Context.getPersonService().getPersonAttributeTypeByUuid(uuid);
-	}
-	
-	public ConceptSource conceptSource(String uuid) {
-		return Context.getConceptService().getConceptSourceByUuid(uuid);
-	}
-	
-	public Encounter saveEncounter(Encounter encounter) {
-		return Context.getEncounterService().saveEncounter(encounter);
-	}
-	
-	public Diagnosis saveDiagnosis(Diagnosis diagnosis) {
-		return Context.getDiagnosisService().save(diagnosis);
 	}
 	
 	public void alert(org.openmrs.User user, String text) {

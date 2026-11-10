@@ -160,6 +160,14 @@ public class NotifiableEventTest {
 	}
 	
 	@Test
+	public void catalogListsTheDiagnosesEachEventCoversFromItsConcept() {
+		SyntheticFixture f = new SyntheticFixture();
+		Map<?, ?> event = (Map<?, ?>) ((List<?>) f.service.getCatalog().get("events")).get(0);
+		assertEquals(Arrays.asList(f.event.getConcept().getUuid(), f.diagnosis.getUuid()),
+		    event.get("diagnosisConceptUuids"));
+	}
+	
+	@Test
 	public void inactiveDiagnosisCannotCreateANewCase() {
 		SyntheticFixture f = new SyntheticFixture();
 		f.event.setActive(false);

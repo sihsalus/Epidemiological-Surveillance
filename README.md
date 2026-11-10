@@ -41,7 +41,7 @@ catálogo. Tras actualizar desde una versión con el desfase de fechas, ejecutar
 privilegio de configuración para reconstruir los acumulados existentes desde
 las fechas de inicio originales. No modifica los casos ni sus fechas.
 
-Cada enfermedad tiene un único evento notificable. `POST /events` recibe concepto, periodicidad, norma de referencia y `active` (booleano). `PUT /events/{uuid}` modifica esos atributos o únicamente el estado. Los eventos inactivos se excluyen del catálogo de selección y no admiten nuevos casos; siguen disponibles para edición y reactivación. El nombre se deriva de `concept_name` y el plazo de la periodicidad.
+Cada evento notificable es un concepto de diagnóstico configurado por epidemiología (o un conjunto de conceptos que agrupa diagnósticos); un caso pertenece al evento cuyo concepto coincide con su diagnóstico. No existe un mapeo de diagnósticos ni de pruebas de laboratorio por evento. `POST /events` recibe concepto, periodicidad, norma de referencia y `active` (booleano). `PUT /events/{uuid}` modifica esos atributos o únicamente el estado. Los eventos inactivos se excluyen del catálogo de selección y no admiten nuevos casos; siguen disponibles para edición y reactivación. El nombre se deriva de `concept_name` y el plazo de la periodicidad.
 
 La migración `liquibase-event-state.xml` inicializa el estado según la vigencia anterior y agrega unicidad por concepto. Si existen varias versiones de una enfermedad, se detiene antes de modificar datos: sus referencias deben conciliarse antes de desplegar. Las fechas anteriores se conservan internamente como datos históricos y dejan de formar parte del formulario y de la respuesta de eventos.
 

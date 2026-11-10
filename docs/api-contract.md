@@ -83,8 +83,15 @@ No existe una operación de cierre de casos ni un estado de cerrado.
 }
 ```
 
-El servidor deriva evento notificable y gravedad desde `diagnosisUuid` y los
-conceptos configurados; no acepta esos valores como campos del caso. Nombres, edad, sexo,
+El servidor deriva el evento notificable desde `diagnosisUuid`: cada evento es el
+concepto de diagnóstico configurado por epidemiología, o un conjunto de conceptos que
+lo contiene; la coincidencia directa prevalece. Un diagnóstico sin evento devuelve
+422 `INVALID_REFERENCE`. El evento no se acepta como campo del caso.
+`diagnosisType` (CONFIRMADO, PROBABLE, DESCARTADO) y `origin` (AUTOCTONO,
+IMPORTADO_NACIONAL, IMPORTADO_INTERNACIONAL, RECAIDA, RECRUDESCENCIA, INDUCIDO,
+INTRODUCIDO, UNKNOWN) son listas fijas de códigos. La clasificación de laboratorio no se mapea
+por evento: se deriva del nombre de la respuesta del resultado seleccionado.
+Nombres, edad, sexo,
 residencia y etnia no se aceptan ni se copian: se leen desde `patient`. Gestación se
 registra como `Obs` del encuentro mediante el formulario clínico.
 
@@ -265,3 +272,14 @@ inmediata, y nunca anterior a la atención. Ausencia de notificación no es opor
 Los valores históricos nulos se conservan hasta editar. `deathAttribution` se
 normaliza a null salvo caso CONFIRMADO con Person.deathDate; se mantienen las
 restricciones y opciones anteriores. Los reportes no deducen causalidad.
+
+## Catálogo (`GET /catalog`)
+
+Expone solo la configuración que el componente no puede derivar de OpenMRS:
+calendario epidemiológico (`timezone`, `firstDayOfWeek`, `minimalDaysInFirstWeek`,
+`surveillanceStartDate`, `historicalYears`, `minimumHistoricalYears`), referencias
+de content (`icd10SourceUuid`, `ethnicityAttributeTypeUuid`, `ethnicityCodeSource`,
+`ethnicityGroups`), los conceptos Verdadero/Falso y la lista de eventos activos. Cada evento incluye
+`diagnosisConceptUuids`: su concepto y, si es un conjunto, sus miembros no retirados,
+leídos de OpenMRS. El formulario solo ofrece diagnósticos del encuentro incluidos ahí.
+No contiene diagnósticos, pruebas de laboratorio ni preguntas por evento.

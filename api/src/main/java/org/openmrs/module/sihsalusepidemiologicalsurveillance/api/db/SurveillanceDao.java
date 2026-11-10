@@ -4,8 +4,6 @@ import java.util.Date;
 import java.util.List;
 
 import org.openmrs.BaseOpenmrsObject;
-import org.openmrs.Encounter;
-import org.openmrs.Patient;
 import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.*;
 
 public interface SurveillanceDao {
@@ -55,13 +53,7 @@ public interface SurveillanceDao {
 	
 	void replaceCounts(NotifiableEvent event, List<PeriodCaseCount> counts);
 	
-	void lockPatient(Patient patient);
-	
 	void lockEvent(NotifiableEvent event);
-	
-	List<Encounter> encounters(Date from, Date to, String onsetConceptUuid);
-	
-	List<Encounter> possibleDuplicates(Patient patient, List<String> diagnoses, Date from, Date to, String onsetConceptUuid);
 	
 	Integer populatedCenterId(String uuid);
 	
