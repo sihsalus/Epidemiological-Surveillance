@@ -65,7 +65,7 @@ public class AlertRulesTest {
 			}
 		}
 	}
-
+	
 	@Test
 	public void immediateRegistrationAndReplay() {
 		Snapshot s = record(week(2026, 5));

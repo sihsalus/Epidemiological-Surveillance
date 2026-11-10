@@ -27,6 +27,10 @@
         <description>Vigilancia Epidemiologica: Registrar Casos</description>
     </privilege>
     <privilege>
+        <name>Vigilancia Epidemiologica: Editar Casos</name>
+        <description>Vigilancia Epidemiologica: Editar Casos</description>
+    </privilege>
+    <privilege>
         <name>Vigilancia Epidemiologica: Ver Indicadores</name>
         <description>Vigilancia Epidemiologica: Ver Indicadores</description>
     </privilege>

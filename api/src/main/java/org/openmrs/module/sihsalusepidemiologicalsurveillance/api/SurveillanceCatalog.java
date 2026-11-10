@@ -15,6 +15,11 @@ public final class SurveillanceCatalog {
 		m.surveillanceStartDate = "2026-01-01";
 		m.encounterRoleUuid = "240b26f9-dd88-4172-823d-4a8bfeb7841f";
 		m.ethnicityAttributeTypeUuid = "8d871386-c2cc-11de-8d13-0010c6dffd0f";
+		// Group-only answers in content have no MINSA-ETNIAS mapping.
+		m.ethnicityGroups.put("948c61a0-0253-4e2c-9ec9-3baa71e904cb", 3); // Andino
+		m.ethnicityGroups.put("0438248a-7a6d-4b62-aad5-7c0128a2fc5d", 2); // Afro Descendiente
+		m.ethnicityGroups.put("7bb475f1-79ca-49d4-9dd1-294922f9f2aa", 4); // Indigena Amazonico
+		m.ethnicityGroups.put("4cf9f13f-bbac-50db-8fac-85205b58b44c", 6); // Otro no codificado
 		m.icd10SourceUuid = "4faa9f66-d80f-4685-9645-af206fce7fa5";
 		m.questions.put("event", "4dfe981b-6604-5806-ae5c-74410a3a1d16");
 		m.questions.put("status", "130be497-8e61-5b6d-9c72-79f7fbe5ec32");

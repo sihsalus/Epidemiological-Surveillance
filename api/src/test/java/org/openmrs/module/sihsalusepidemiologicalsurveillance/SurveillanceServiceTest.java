@@ -177,7 +177,7 @@ public class SurveillanceServiceTest {
 		verify(f.access).require(SurveillanceConstants.EDIT);
 		verify(f.access, never()).require(SurveillanceConstants.REGISTER);
 	}
-
+	
 	@Test
 	public void deniedEditDoesNotModifyTheCase() {
 		SyntheticFixture f = new SyntheticFixture();
@@ -211,7 +211,7 @@ public class SurveillanceServiceTest {
 		assertEquals(epidemiologist, existing.getChangedBy());
 		assertEquals("IMPORTADO_NACIONAL", existing.getOrigin());
 	}
-
+	
 	@Test
 	public void editingCannotReplaceTheRegisteringProfessional() {
 		SyntheticFixture f = new SyntheticFixture();
@@ -231,7 +231,7 @@ public class SurveillanceServiceTest {
 		}
 		verify(f.dao, never()).save(any(SurveillanceCase.class));
 	}
-
+	
 	@Test
 	public void draftRejectsASecondCaseForTheSameDiagnosis() {
 		SyntheticFixture f = new SyntheticFixture();

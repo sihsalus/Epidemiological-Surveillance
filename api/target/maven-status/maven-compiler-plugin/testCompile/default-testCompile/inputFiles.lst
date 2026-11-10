@@ -5,6 +5,7 @@ C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\test\java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\test\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\CaseSnapshotTest.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\test\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\CaseValidatorTest.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\test\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\ClinicalCatalogServiceTest.java
+C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\test\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\ConfigurationAuditTest.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\test\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\DeathAttributionTest.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\test\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\DemographicCalculatorTest.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\test\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\DemographicServiceTest.java
@@ -21,8 +22,10 @@ C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\test\java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\test\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\NotifiableEventTest.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\test\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\NotificationTimeTest.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\test\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\OutbreakEngineTest.java
+C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\test\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\OutbreakRuleSettingsTest.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\test\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\RecoverEmptySurveillanceSchemaTest.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\test\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\ReportCalculatorTest.java
+C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\test\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\RetireUnusedTablesTest.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\test\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\SurveillanceDaoTest.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\test\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\SurveillanceServiceTest.java
 C:\Users\smith\Documents\TESIS\Codigo\epidemiologysurveillance\api\src\test\java\org\openmrs\module\sihsalusepidemiologicalsurveillance\SyntheticFixture.java

@@ -16,7 +16,7 @@ catálogo. Semanas inexistentes devuelven 422 `INVALID_PERIOD`.
 
 Cada fila incluye `id`, `year`, `week`, `paternalSurname`,
 `maternalSurname`, `givenNames`, `age` (años), `sex`, `dni`, `province`, `district`,
-`locality` (lugar de infección), `residence`, `ethnicity` (nombre),
+`locality` (lugar de infección), `residence`, `ethnicityGroup`, `ethnicity`,
 `habitualResidence`, `icd10`, `diagnosisType`, `vaccinationStatus`,
 `onsetDate`, `deathDate`, `investigationDate`, `notificationDate` (fechas ISO),
 `investigationForm` (booleano) y `surveillanceType`. Los ausentes son null.
@@ -27,6 +27,18 @@ presenta y exporta ficha como S/N y vigilancia como P/A; `icd10` solo lleva el c
 Incluye C/P/D y cualquier periodicidad; excluye casos y fuentes clínicas anulados.
 La exportación Excel/CSV la genera el frontend con estas filas autorizadas;
 no persiste archivos ni crea entidades `IndividualRecord`.
+
+`ethnicityGroup` y `ethnicity` son números o null, derivados del atributo vigente
+del paciente. La etnia usa la equivalencia única activa SAME-AS de `MINSA-ETNIAS`
+publicada en content, nunca el ID interno ni los rangos del PDF. Códigos 2, 19,
+40 y 49: grupo 3 (Andino); los demás de 1 a 55: grupo 4 (Indígena amazónico).
+Los códigos 56, 57, 58, 59 y 60 representan solo grupos: respectivamente 2
+(Afrodescendiente), 6 (Otros, incluido Blanco), 1 (Mestizo), 5
+(Asiaticodescendiente) y 6 (Otros); `ethnicity` queda null. Las respuestas de
+grupo sin mapping (Andino, Afro Descendiente, Indígena Amazónico y Otro no
+codificado) se reconocen por sus UUID de content, declarados en el catálogo.
+Datos ausentes, retirados, desconocidos o ambiguos quedan null. No se modifica
+el atributo ni la presentación demográfica. Actualizar ESM y OMOD juntos.
 
 Las respuestas de casos agregan `diagnosisIcd10`; las de eventos agregan `icd10`.
 Provienen del mapeo único a la fuente CIE-10 configurada. Ausencia o ambigüedad

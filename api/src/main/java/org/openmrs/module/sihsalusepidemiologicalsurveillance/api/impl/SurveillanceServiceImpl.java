@@ -621,6 +621,24 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		return result;
 	}
 	
+	private WeeklyEthnicity weeklyEthnicity(Patient patient, ClinicalCatalog metadata) {
+		Concept concept = null;
+		if (patient != null && ClinicalCatalogService.present(metadata.ethnicityAttributeTypeUuid)) {
+			PersonAttributeType type = clinical.attributeType(metadata.ethnicityAttributeTypeUuid);
+			PersonAttribute attribute = type == null ? null : patient.getAttribute(type);
+			if (attribute != null && !attribute.getVoided() && "org.openmrs.Concept".equals(type.getFormat())
+			        && ClinicalCatalogService.present(attribute.getValue())) {
+				try {
+					concept = clinical.concept(Integer.valueOf(attribute.getValue()));
+				}
+				catch (NumberFormatException ex) {
+					concept = clinical.concept(attribute.getValue());
+				}
+			}
+		}
+		return WeeklyEthnicity.from(concept, metadata);
+	}
+
 	private String demographicEthnicity(Patient patient, ClinicalCatalog metadata) {
 		if (patient == null || !ClinicalCatalogService.present(metadata.ethnicityAttributeTypeUuid))
 			return null;
@@ -1131,7 +1149,9 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 			row.put("residence",
 			    parts.length >= 4 ? dao.residenceCode(parts[0].trim(), parts[1].trim(), parts[2].trim(), parts[3].trim())
 			            : null);
-			row.put("ethnicity", demographicEthnicity(value.getPatient(), metadata));
+			WeeklyEthnicity ethnicity = weeklyEthnicity(value.getPatient(), metadata);
+			row.put("ethnicityGroup", ethnicity.group);
+			row.put("ethnicity", ethnicity.ethnicity);
 			row.put("habitualResidence", value.getHabitualResidence());
 			Concept diagnosis = value.getDiagnosis().getDiagnosis() == null ? null
 			        : value.getDiagnosis().getDiagnosis().getCoded();

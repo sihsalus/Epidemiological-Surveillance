@@ -29,7 +29,7 @@ public class AlertServiceTest {
 		value.setVoided(true);
 		assertNull(f.service.alerts(null, null, null).get(0).get("registeredBy"));
 	}
-
+	
 	@Test
 	public void newRuleAlertsForExistingConditionOnceAndDeletedRulesStopGenerating() {
 		SyntheticFixture f = new SyntheticFixture();

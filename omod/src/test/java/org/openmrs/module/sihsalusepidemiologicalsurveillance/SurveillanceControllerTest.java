@@ -24,7 +24,7 @@ public class SurveillanceControllerTest {
 		        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isNotFound());
 		verifyNoInteractions(service);
 	}
-
+	
 	@Test
 	public void outbreakConfigurationBindsTheCompleteRuleArray() throws Exception {
 		SurveillanceService service = mock(SurveillanceService.class);

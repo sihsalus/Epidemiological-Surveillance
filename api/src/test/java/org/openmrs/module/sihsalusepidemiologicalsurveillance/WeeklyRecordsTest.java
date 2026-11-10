@@ -92,7 +92,7 @@ public class WeeklyRecordsTest {
 	}
 	
 	@Test
-	public void returnsEthnicityNameAndNeverSubstitutesOtherIdentifiersForDni() {
+	public void returnsEthnicityCodesAndNeverSubstitutesOtherIdentifiersForDni() {
 		SyntheticFixture f = new SyntheticFixture();
 		f.m.ethnicityAttributeTypeUuid = "ethnicity";
 		PersonAttributeType type = new PersonAttributeType(1);
@@ -100,13 +100,23 @@ public class WeeklyRecordsTest {
 		when(f.clinical.attributeType("ethnicity")).thenReturn(type);
 		Concept ethnicity = SyntheticFixture.concept(501);
 		ethnicity.addName(new ConceptName("Synthetic ethnicity", Locale.ENGLISH));
+		ConceptSource source = new ConceptSource();
+		source.setName("MINSA-ETNIAS");
+		ConceptMapType mapType = new ConceptMapType();
+		mapType.setName("SAME-AS");
+		ethnicity.addConceptMapping(new ConceptMap(new ConceptReferenceTerm(source, "2", null), mapType));
 		when(f.clinical.concept(501)).thenReturn(ethnicity);
 		f.patient.addAttribute(new PersonAttribute(type, "501"));
 		SurveillanceCase value = row(f, "2026-01-05T12:00:00Z");
 		when(f.dao.weeklyCases(any(Date.class), any(Date.class))).thenReturn(Collections.singletonList(value));
 		List<Map<String, Object>> rows = (List<Map<String, Object>>) f.service.weeklyRecords(2026, 1).get("rows");
-		assertEquals("Synthetic ethnicity", rows.get(0).get("ethnicity"));
+		assertEquals(2, rows.get(0).get("ethnicity"));
+		assertEquals(3, rows.get(0).get("ethnicityGroup"));
 		assertNull(rows.get(0).get("dni"));
+		f.patient.getAttribute(type).setVoided(true);
+		rows = (List<Map<String, Object>>) f.service.weeklyRecords(2026, 1).get("rows");
+		assertNull(rows.get(0).get("ethnicity"));
+		assertNull(rows.get(0).get("ethnicityGroup"));
 	}
 	
 	private SurveillanceCase row(SyntheticFixture f, String notification) {
