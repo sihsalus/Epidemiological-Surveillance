@@ -638,7 +638,7 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		}
 		return WeeklyEthnicity.from(concept, metadata);
 	}
-
+	
 	private String demographicEthnicity(Patient patient, ClinicalCatalog metadata) {
 		if (patient == null || !ClinicalCatalogService.present(metadata.ethnicityAttributeTypeUuid))
 			return null;

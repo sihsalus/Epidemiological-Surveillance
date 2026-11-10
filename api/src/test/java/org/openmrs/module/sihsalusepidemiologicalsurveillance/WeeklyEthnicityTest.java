@@ -8,9 +8,9 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.api.*;
 import org.openmrs.module.sihsalusepidemiologicalsurveillance.api.model.ClinicalCatalog;
 
 public class WeeklyEthnicityTest {
-
+	
 	private final ClinicalCatalog metadata = SurveillanceCatalog.create();
-
+	
 	@Test
 	public void classifiesAllSpecificContentCodesInsteadOfPdfRanges() {
 		for (int code = 1; code <= 55; code++) {
@@ -19,7 +19,7 @@ public class WeeklyEthnicityTest {
 			assertEquals(Integer.valueOf(code == 2 || code == 19 || code == 40 || code == 49 ? 3 : 4), result.group);
 		}
 	}
-
+	
 	@Test
 	public void mapsAggregateCodesWithoutInventingSpecificEthnicities() {
 		int[] groups = { 2, 6, 1, 5, 6 };
@@ -29,7 +29,7 @@ public class WeeklyEthnicityTest {
 			assertNull(result.ethnicity);
 		}
 	}
-
+	
 	@Test
 	public void resolvesUnmappedGroupAnswersByStableContentIdentity() {
 		for (String uuid : metadata.ethnicityGroups.keySet()) {
@@ -40,7 +40,7 @@ public class WeeklyEthnicityTest {
 			assertNull(result.ethnicity);
 		}
 	}
-
+	
 	@Test
 	public void leavesMissingUnknownRetiredAndAmbiguousCodesBlank() {
 		assertBlank(null);
@@ -63,19 +63,19 @@ public class WeeklyEthnicityTest {
 		nonEquivalent.getConceptMappings().iterator().next().getConceptMapType().setName("NARROWER-THAN");
 		assertBlank(nonEquivalent);
 	}
-
+	
 	private void assertBlank(Concept concept) {
 		WeeklyEthnicity result = WeeklyEthnicity.from(concept, metadata);
 		assertNull(result.group);
 		assertNull(result.ethnicity);
 	}
-
+	
 	private Concept concept(String code) {
 		Concept concept = new Concept(501);
 		concept.addConceptMapping(mapping(code));
 		return concept;
 	}
-
+	
 	private ConceptMap mapping(String code) {
 		ConceptSource source = new ConceptSource();
 		source.setName("MINSA-ETNIAS");

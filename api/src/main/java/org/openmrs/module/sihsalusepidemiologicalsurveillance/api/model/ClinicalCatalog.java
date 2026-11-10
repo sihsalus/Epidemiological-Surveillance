@@ -19,9 +19,9 @@ public class ClinicalCatalog {
 	public String encounterRoleUuid;
 	
 	public String ethnicityAttributeTypeUuid;
-
+	
 	public String ethnicityCodeSource = "MINSA-ETNIAS";
-
+	
 	public Map<String, Integer> ethnicityGroups = new LinkedHashMap<String, Integer>();
 	
 	public String pregnancyAttributeTypeUuid;
