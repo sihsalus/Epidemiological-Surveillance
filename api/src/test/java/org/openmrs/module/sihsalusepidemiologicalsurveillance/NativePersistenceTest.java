@@ -326,6 +326,81 @@ public class NativePersistenceTest extends BaseModuleContextSensitiveTest {
 		assertFalse(value.getPregnant());
 	}
 	
+	@Test
+	public void travelHistoryCascadesPersistsAuditUpdatesAndDeletesOrphans() {
+		Patient patient = Context.getPatientService().getPatient(2);
+		Encounter encounter = new Encounter();
+		encounter.setPatient(patient);
+		encounter.setEncounterDatetime(new Date());
+		encounter.setLocation(Context.getLocationService().getLocation(1));
+		encounter.setEncounterType(Context.getEncounterService().getAllEncounterTypes(false).get(0));
+		Context.getEncounterService().saveEncounter(encounter);
+		Diagnosis diagnosis = new Diagnosis();
+		diagnosis.setPatient(patient);
+		diagnosis.setEncounter(encounter);
+		diagnosis.setDiagnosis(new CodedOrFreeText(Context.getConceptService().getConcept(3), null, null));
+		diagnosis.setCertainty(ConditionVerificationStatus.CONFIRMED);
+		diagnosis.setRank(1);
+		Context.getDiagnosisService().save(diagnosis);
+		Provider provider = new Provider();
+		provider.setPerson(Context.getAuthenticatedUser().getPerson());
+		provider.setIdentifier("snapshot-synthetic");
+		Context.getProviderService().saveProvider(provider);
+		SurveillanceCase value = new SurveillanceCase();
+		value.setPatient(patient);
+		value.setEncounter(encounter);
+		value.setDiagnosis(diagnosis);
+		value.setProvider(provider);
+		value.setLocation(encounter.getLocation());
+		value.setDiagnosisType("PROBABLE");
+		value.setCreator(Context.getAuthenticatedUser());
+		value.setDateCreated(new Date());
+		value.setNotificationDate(java.util.Date.from(java.time.Instant.parse("2026-01-22T04:35:12Z")));
+		value.setHabitualResidence("3");
+
+		org.openmrs.module.sihsalusepidemiologicalsurveillance.model.SurveillanceCaseTravel travel = new org.openmrs.module.sihsalusepidemiologicalsurveillance.model.SurveillanceCaseTravel();
+		travel.setSurveillanceCase(value);
+		travel.setTravelAddress(42);
+		travel.setStartDate(java.sql.Date.valueOf("2026-01-01"));
+		travel.setEndDate(java.sql.Date.valueOf("2026-01-02"));
+		travel.setCreator(Context.getAuthenticatedUser());
+		travel.setDateCreated(new Date(1000000L));
+		value.getTravelHistory().add(travel);
+		dao.save(value);
+		String caseUuid = value.getUuid(), tripUuid = travel.getUuid();
+		Context.flushSession();
+		Context.clearSession();
+		value = dao.byUuid(SurveillanceCase.class, caseUuid);
+		assertEquals(1, value.getTravelHistory().size());
+		travel = value.getTravelHistory().iterator().next();
+		assertEquals(tripUuid, travel.getUuid());
+		assertEquals(Integer.valueOf(42), travel.getTravelAddress());
+		assertEquals("2026-01-01", travel.getStartDate().toString());
+		assertEquals("2026-01-02", travel.getEndDate().toString());
+		assertEquals(new Date(1000000L), travel.getDateCreated());
+		assertEquals(Context.getAuthenticatedUser(), travel.getCreator());
+		assertNull(travel.getChangedBy());
+		travel.setEndDate(java.sql.Date.valueOf("2026-01-03"));
+		travel.setChangedBy(Context.getAuthenticatedUser());
+		travel.setDateChanged(new Date(2000000L));
+		dao.save(value);
+		Context.flushSession();
+		Context.clearSession();
+		value = dao.byUuid(SurveillanceCase.class, caseUuid);
+		travel = value.getTravelHistory().iterator().next();
+		assertEquals(tripUuid, travel.getUuid());
+		assertEquals("2026-01-03", travel.getEndDate().toString());
+		assertEquals(Context.getAuthenticatedUser(), travel.getChangedBy());
+		assertEquals(new Date(2000000L), travel.getDateChanged());
+		value.getTravelHistory().clear();
+		dao.save(value);
+		Context.flushSession();
+		Context.clearSession();
+		assertTrue(dao.byUuid(SurveillanceCase.class, caseUuid).getTravelHistory().isEmpty());
+		assertNull(
+		    dao.byUuid(org.openmrs.module.sihsalusepidemiologicalsurveillance.model.SurveillanceCaseTravel.class, tripUuid));
+	}
+
 	@Autowired
 	private SurveillanceDao dao;
 	

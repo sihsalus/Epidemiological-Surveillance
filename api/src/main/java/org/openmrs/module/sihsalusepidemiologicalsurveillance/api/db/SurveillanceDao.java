@@ -8,6 +8,8 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.*;
 
 public interface SurveillanceDao {
 	
+	int verifiedTableCount();
+
 	org.openmrs.User alertAttendant(String reference);
 	
 	List<SurveillanceAlert> alerts();

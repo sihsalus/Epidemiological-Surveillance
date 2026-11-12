@@ -45,4 +45,5 @@
     <include file="liquibase-outbreak-config.xml"/>
     <include file="liquibase-configuration-audit.xml"/>
     <include file="liquibase-retire-unused-tables.xml"/>
+    <include file="liquibase-case-travel.xml"/>
 </databaseChangeLog>

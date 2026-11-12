@@ -13,6 +13,17 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.*;
 public class HibernateSurveillanceDao implements SurveillanceDao {
 	
 	@Override
+	public int verifiedTableCount() {
+		String[] tables = { "notifiable_event", "period_case_count", "surveillance_age_group_config", "surveillance_alert",
+		        "surveillance_case", "surveillance_case_travel", "surveillance_center_coordinates",
+		        "surveillance_coordinate_codes", "surveillance_endemic_config", "surveillance_notification_config",
+		        "surveillance_outbreak_config", "surveillance_risk_config" };
+		for (String table : tables)
+			sessionFactory.getCurrentSession().createSQLQuery("select count(*) from " + table + " where 1=0").uniqueResult();
+		return tables.length;
+	}
+
+	@Override
 	public org.openmrs.User alertAttendant(String reference) {
 		if (reference == null)
 			return null;

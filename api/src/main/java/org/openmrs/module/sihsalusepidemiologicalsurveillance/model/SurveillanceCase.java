@@ -15,6 +15,16 @@ public class SurveillanceCase extends BaseOpenmrsObject {
 	
 	private Integer id;
 	
+	private java.util.Set<SurveillanceCaseTravel> travelHistory = new java.util.LinkedHashSet<SurveillanceCaseTravel>();
+
+	public java.util.Set<SurveillanceCaseTravel> getTravelHistory() {
+		return travelHistory;
+	}
+
+	public void setTravelHistory(java.util.Set<SurveillanceCaseTravel> value) {
+		travelHistory = value;
+	}
+
 	private Boolean pregnant;
 	
 	private String patientGivenNames;

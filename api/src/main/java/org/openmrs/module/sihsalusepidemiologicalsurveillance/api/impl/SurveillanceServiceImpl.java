@@ -692,7 +692,10 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 	@Override
 	public Map<String, Object> healthcheck() {
 		access.require(SurveillanceConstants.ACCESS);
-		return Collections.<String, Object> singletonMap("status", "UP");
+		Map<String, Object> result = new LinkedHashMap<String, Object>();
+		result.put("tableCount", dao.verifiedTableCount());
+		result.put("status", "UP");
+		return result;
 	}
 	
 	@Override
@@ -937,6 +940,7 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 			throw new SurveillanceException(422, "INVALID_CLASSIFICATION", "deathAttribution", "selection");
 		value.setDeathAttribution(attribution);
 		validateDates(value);
+		replaceTravelHistory(value, request.travelHistory, actor, calendar);
 		if (creating)
 			capturePatient(value, patient, calendar);
 		boolean eligible = "F".equalsIgnoreCase(value.getPatientSex()) && value.getPatientAge() != null
@@ -945,6 +949,63 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		return value;
 	}
 	
+	private void replaceTravelHistory(SurveillanceCase value, List<TravelHistoryEntry> entries, User actor,
+	        EpidemiologicalCalendar calendar) {
+		Map<String, SurveillanceCaseTravel> existing = new HashMap<String, SurveillanceCaseTravel>();
+		for (SurveillanceCaseTravel travel : value.getTravelHistory())
+			existing.put(travel.getUuid(), travel);
+		Set<SurveillanceCaseTravel> replacement = new LinkedHashSet<SurveillanceCaseTravel>();
+		Set<String> seen = new HashSet<String>();
+		LocalDate reference = calendar
+		        .local(value.getOnsetDate() == null ? value.getInvestigationDate() : value.getOnsetDate());
+		if (entries != null)
+			for (int i = 0; i < entries.size(); i++) {
+				TravelHistoryEntry entry = entries.get(i);
+				String prefix = "travelHistory[" + i + "].";
+				if (entry == null || !ClinicalCatalogService.present(entry.travelAddress))
+					throw new SurveillanceException(422, "REQUIRED_FIELDS", prefix + "travelAddress", "required");
+				Integer address = dao.populatedCenterId(entry.travelAddress);
+				if (address == null)
+					throw new SurveillanceException(422, "INVALID_REFERENCE", prefix + "travelAddress", "selection");
+				Date start = date(entry.startDate, prefix + "startDate"), end = date(entry.endDate, prefix + "endDate");
+				if (start == null)
+					throw new SurveillanceException(422, "REQUIRED_FIELDS", prefix + "startDate", "required");
+				if (end == null)
+					throw new SurveillanceException(422, "REQUIRED_FIELDS", prefix + "endDate", "required");
+				LocalDate from = calendar.local(start), to = calendar.local(end);
+				if (from.isAfter(calendar.today()))
+					throw new SurveillanceException(422, "INVALID_DATE_RANGE", prefix + "startDate", "future");
+				if (to.isAfter(calendar.today()))
+					throw new SurveillanceException(422, "INVALID_DATE_RANGE", prefix + "endDate", "future");
+				if (from.isAfter(to))
+					throw new SurveillanceException(422, "INVALID_DATE_RANGE", prefix + "endDate", "endBeforeStart");
+				if (to.isBefore(reference.minusDays(28)) || from.isAfter(reference))
+					throw new SurveillanceException(422, "INVALID_DATE_RANGE", prefix + "startDate", "travelOutsideWindow");
+				SurveillanceCaseTravel travel = null;
+				if (ClinicalCatalogService.present(entry.uuid)) {
+					travel = existing.get(entry.uuid);
+					if (travel == null || !seen.add(entry.uuid))
+						throw new SurveillanceException(422, "INVALID_REFERENCE", prefix + "uuid", "selection");
+				}
+				if (travel == null) {
+					travel = new SurveillanceCaseTravel();
+					travel.setCreator(actor);
+					travel.setDateCreated(new Date());
+					travel.setSurveillanceCase(value);
+				} else if (!Objects.equals(address, travel.getTravelAddress()) || !start.equals(travel.getStartDate())
+				        || !end.equals(travel.getEndDate())) {
+					travel.setChangedBy(actor);
+					travel.setDateChanged(new Date());
+				}
+				travel.setTravelAddress(address);
+				travel.setStartDate(start);
+				travel.setEndDate(end);
+				replacement.add(travel);
+			}
+		value.getTravelHistory().retainAll(replacement);
+		value.getTravelHistory().addAll(replacement);
+	}
+
 	private void capturePatient(SurveillanceCase value, Patient patient, EpidemiologicalCalendar calendar) {
 		PersonName name = patient.getPersonName();
 		if (name != null) {
@@ -1150,6 +1211,15 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 	
 	private SurveillanceCaseResponse response(SurveillanceCase value) {
 		SurveillanceCaseResponse r = new SurveillanceCaseResponse();
+		for (SurveillanceCaseTravel travel : value.getTravelHistory()) {
+			TravelHistoryEntry entry = new TravelHistoryEntry();
+			entry.uuid = travel.getUuid();
+			entry.travelAddress = dao.addressUuid(travel.getTravelAddress());
+			entry.travelAddressDisplay = dao.addressDisplay(travel.getTravelAddress());
+			entry.startDate = travel.getStartDate().toString().substring(0, 10);
+			entry.endDate = travel.getEndDate().toString().substring(0, 10);
+			r.travelHistory.add(entry);
+		}
 		r.uuid = value.getUuid();
 		r.patientUuid = value.getPatient().getUuid();
 		for (PatientIdentifier identifier : value.getPatient().getIdentifiers())

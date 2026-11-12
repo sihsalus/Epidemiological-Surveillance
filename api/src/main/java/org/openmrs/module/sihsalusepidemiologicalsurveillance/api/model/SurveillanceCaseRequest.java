@@ -3,6 +3,8 @@ package org.openmrs.module.sihsalusepidemiologicalsurveillance.api.model;
 /** JSON contract for a surveillance-case draft. References are OpenMRS UUIDs. */
 public class SurveillanceCaseRequest {
 	
+	public java.util.List<TravelHistoryEntry> travelHistory = new java.util.ArrayList<TravelHistoryEntry>();
+
 	public String patientUuid;
 	
 	public String encounterUuid;

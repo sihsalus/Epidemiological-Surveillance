@@ -112,6 +112,16 @@ public class LiquibaseMigrationTest {
 				assertEquals("0,2,12,18,30,60", config.getString(1));
 				assertFalse(config.next());
 			}
+			int moduleTables = 0;
+			try (ResultSet tableRows = connection.getMetaData().getTables(null, null, "%", new String[] { "TABLE" })) {
+				while (tableRows.next()) {
+					String name = tableRows.getString("TABLE_NAME").toLowerCase(java.util.Locale.ROOT);
+					if (name.startsWith("surveillance_") || name.equals("notifiable_event")
+					        || name.equals("period_case_count"))
+						moduleTables++;
+				}
+			}
+			assertEquals(12, moduleTables);
 			boolean diagnosisForeignKeyFound = false;
 			try (ResultSet keys = connection.getMetaData().getImportedKeys(null, null, "SURVEILLANCE_CASE")) {
 				while (keys.next()) {
@@ -125,7 +135,10 @@ public class LiquibaseMigrationTest {
 			}
 			assertTrue("Expected FK to the native encounter diagnosis table", diagnosisForeignKeyFound);
 			try (Statement sql = connection.createStatement()) {
-				for (String table : new String[] { "NOTIFIABLE_EVENT", "PERIOD_CASE_COUNT", "SURVEILLANCE_CASE" }) {
+				for (String table : new String[] { "NOTIFIABLE_EVENT", "PERIOD_CASE_COUNT", "SURVEILLANCE_AGE_GROUP_CONFIG",
+				        "SURVEILLANCE_ALERT", "SURVEILLANCE_CASE", "SURVEILLANCE_CASE_TRAVEL",
+				        "SURVEILLANCE_CENTER_COORDINATES", "SURVEILLANCE_COORDINATE_CODES", "SURVEILLANCE_ENDEMIC_CONFIG",
+				        "SURVEILLANCE_NOTIFICATION_CONFIG", "SURVEILLANCE_OUTBREAK_CONFIG", "SURVEILLANCE_RISK_CONFIG" }) {
 					assertTrue("Expected current table " + table,
 					    connection.getMetaData().getTables(null, null, table, null).next());
 				}
@@ -152,6 +165,17 @@ public class LiquibaseMigrationTest {
 				fails(sql, "delete from notifiable_event where notifiable_event_id=10");
 				sql.execute(
 				    "insert into surveillance_case(surveillance_case_id,uuid,patient_id,encounter_id,provider_id,location_id,diagnosis_id,diagnosis_type,creator,date_created,voided) values(1,'case',1,1,1,1,1,'PROBABLE',1,CURRENT_TIMESTAMP,false)");
+				sql.execute(
+				    "insert into surveillance_case_travel(uuid,case_id,travel_address,start_date,end_date,creator,date_created) values('trip',1,1,CURRENT_DATE,CURRENT_DATE,1,CURRENT_TIMESTAMP)");
+				fails(sql, "delete from surveillance_case where surveillance_case_id=1");
+				fails(sql,
+				    "insert into surveillance_case_travel(uuid,case_id,travel_address,start_date,end_date,creator,date_created) values('bad-trip',999,1,CURRENT_DATE,CURRENT_DATE,1,CURRENT_TIMESTAMP)");
+				fails(sql,
+				    "insert into surveillance_case_travel(uuid,case_id,travel_address,start_date,end_date,creator,date_created) values('bad-center',1,999,CURRENT_DATE,CURRENT_DATE,1,CURRENT_TIMESTAMP)");
+				fails(sql,
+				    "insert into surveillance_case_travel(uuid,case_id,travel_address,start_date,end_date,creator,date_created) values('no-start',1,1,NULL,CURRENT_DATE,1,CURRENT_TIMESTAMP)");
+				fails(sql,
+				    "insert into surveillance_case_travel(uuid,case_id,travel_address,start_date,end_date,creator,date_created) values('trip',1,1,CURRENT_DATE,CURRENT_DATE,1,CURRENT_TIMESTAMP)");
 				fails(sql,
 				    "insert into surveillance_case(surveillance_case_id,uuid,patient_id,encounter_id,provider_id,location_id,diagnosis_id,diagnosis_type,creator,date_created,voided) values(2,'same-diagnosis',1,1,1,1,1,'PROBABLE',1,CURRENT_TIMESTAMP,false)");
 				fails(sql,
