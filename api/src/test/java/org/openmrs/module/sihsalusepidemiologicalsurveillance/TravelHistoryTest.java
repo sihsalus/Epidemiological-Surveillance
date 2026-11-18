@@ -12,7 +12,7 @@ import org.openmrs.module.sihsalusepidemiologicalsurveillance.api.model.*;
 import org.openmrs.module.sihsalusepidemiologicalsurveillance.model.*;
 
 public class TravelHistoryTest {
-
+	
 	private SyntheticFixture fixture(String address, String start, String end) {
 		SyntheticFixture f = new SyntheticFixture();
 		TravelHistoryEntry entry = new TravelHistoryEntry();
@@ -26,7 +26,7 @@ public class TravelHistoryTest {
 		when(f.dao.addressDisplay(42)).thenReturn("Synthetic center");
 		return f;
 	}
-
+	
 	private void rejects(SyntheticFixture f, String field, String reason) {
 		try {
 			f.service.createDraft(f.surveillanceRequest);
@@ -37,7 +37,7 @@ public class TravelHistoryTest {
 		}
 		verify(f.dao, never()).save(any(SurveillanceCase.class));
 	}
-
+	
 	@Test
 	public void optionalListMayBeMissingNullOrEmpty() {
 		SyntheticFixture f = new SyntheticFixture();
@@ -45,7 +45,7 @@ public class TravelHistoryTest {
 		f.surveillanceRequest.travelHistory = null;
 		assertTrue(f.service.createDraft(f.surveillanceRequest).travelHistory.isEmpty());
 	}
-
+	
 	@Test
 	public void requiresEachTripFieldAndValidCenter() {
 		rejects(fixture(null, "2026-01-01", "2026-01-02"), "travelAddress", "required");
@@ -56,7 +56,7 @@ public class TravelHistoryTest {
 		f.surveillanceRequest.travelHistory.set(0, null);
 		rejects(f, "travelAddress", "required");
 	}
-
+	
 	@Test
 	public void rejectsInvalidReversedAndFutureDates() {
 		rejects(fixture("center", "2026-02-30", "2026-03-01"), "startDate", "dateFormat");
@@ -65,7 +65,7 @@ public class TravelHistoryTest {
 		rejects(fixture("center", tomorrow, tomorrow), "startDate", "future");
 		rejects(fixture("center", "2026-01-01", tomorrow), "endDate", "future");
 	}
-
+	
 	@Test
 	public void windowUsesOnsetAndIncludesIntersectingBoundaryAndLongTrips() {
 		for (String[] dates : new String[][] { { "2025-12-22", "2025-12-22" }, { "2025-11-01", "2025-12-22" },
@@ -76,7 +76,7 @@ public class TravelHistoryTest {
 		rejects(fixture("center", "2025-12-01", "2025-12-21"), "startDate", "travelOutsideWindow");
 		rejects(fixture("center", "2026-01-20", "2026-01-21"), "startDate", "travelOutsideWindow");
 	}
-
+	
 	@Test
 	public void withoutOnsetUsesEncounterDateIgnoringSuppliedInvestigationDate() {
 		SyntheticFixture f = fixture("center", "2025-12-23", "2025-12-23");
@@ -93,7 +93,7 @@ public class TravelHistoryTest {
 			assertEquals("travelOutsideWindow", ex.getFieldErrors().get("travelHistory[0].startDate"));
 		}
 	}
-
+	
 	@Test
 	public void replacementPreservesIdentityAuditsUpdatesAddsAndRemoves() {
 		SyntheticFixture f = fixture("center", "2026-01-01", "2026-01-02");
@@ -123,7 +123,7 @@ public class TravelHistoryTest {
 		verify(f.access).require(SurveillanceConstants.REGISTER);
 		verify(f.access, times(2)).require(SurveillanceConstants.EDIT);
 	}
-
+	
 	@Test
 	public void rejectsForeignOrDuplicateTravelIdentity() {
 		SyntheticFixture f = fixture("center", "2026-01-01", "2026-01-02");

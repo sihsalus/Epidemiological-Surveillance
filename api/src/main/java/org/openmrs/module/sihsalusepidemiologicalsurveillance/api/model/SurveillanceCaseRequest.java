@@ -4,7 +4,7 @@ package org.openmrs.module.sihsalusepidemiologicalsurveillance.api.model;
 public class SurveillanceCaseRequest {
 	
 	public java.util.List<TravelHistoryEntry> travelHistory = new java.util.ArrayList<TravelHistoryEntry>();
-
+	
 	public String patientUuid;
 	
 	public String encounterUuid;

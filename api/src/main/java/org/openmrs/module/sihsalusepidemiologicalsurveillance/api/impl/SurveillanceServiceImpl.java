@@ -1005,7 +1005,7 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 		value.getTravelHistory().retainAll(replacement);
 		value.getTravelHistory().addAll(replacement);
 	}
-
+	
 	private void capturePatient(SurveillanceCase value, Patient patient, EpidemiologicalCalendar calendar) {
 		PersonName name = patient.getPersonName();
 		if (name != null) {
@@ -1451,13 +1451,6 @@ public class SurveillanceServiceImpl extends BaseOpenmrsService implements Surve
 			}
 		}
 		return value;
-	}
-	
-	private int number(Map<String, Object> body, String key) {
-		Object value = body.get(key);
-		if (!(value instanceof Number) || ((Number) value).doubleValue() != ((Number) value).intValue())
-			throw new SurveillanceException(422, "INVALID_NUMBER");
-		return ((Number) value).intValue();
 	}
 	
 	private Map<String, Object> eventJson(NotifiableEvent event) {

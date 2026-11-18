@@ -22,7 +22,7 @@ public class HibernateSurveillanceDao implements SurveillanceDao {
 			sessionFactory.getCurrentSession().createSQLQuery("select count(*) from " + table + " where 1=0").uniqueResult();
 		return tables.length;
 	}
-
+	
 	@Override
 	public org.openmrs.User alertAttendant(String reference) {
 		if (reference == null)

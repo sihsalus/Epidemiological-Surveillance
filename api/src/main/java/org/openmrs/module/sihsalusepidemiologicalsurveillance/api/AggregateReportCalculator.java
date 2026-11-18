@@ -77,7 +77,9 @@ public class AggregateReportCalculator {
 					java.time.temporal.WeekFields weeks = java.time.temporal.WeekFields
 					        .of(DayOfWeek.valueOf(metadata.firstDayOfWeek), metadata.minimalDaysInFirstWeek);
 					LocalDate historical = LocalDate.of(year, 7, 1).with(weeks.weekOfWeekBasedYear(), point.number);
-					if (calendar.year(historical, period) != year || calendar.number(historical, period) != point.number)
+					boolean exists = calendar.year(historical, period) == year
+					        && calendar.number(historical, period) == point.number;
+					if (!exists)
 						continue;
 				}
 				point.historicalCases.put(year, years.getOrDefault(year, 0));

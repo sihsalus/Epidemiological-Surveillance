@@ -8,10 +8,6 @@
     <bean id="surveillance.catalog" class="org.openmrs.module.sihsalusepidemiologicalsurveillance.api.ClinicalCatalogService">
         <property name="clinical" ref="surveillance.clinical" />
     </bean>
-    <bean id="surveillance.validator" class="org.openmrs.module.sihsalusepidemiologicalsurveillance.api.CaseValidator">
-        <property name="clinical" ref="surveillance.clinical" />
-        <property name="dao" ref="surveillance.dao" />
-    </bean>
     <bean id="surveillance.service" class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
         <property name="transactionManager" ref="transactionManager" />
         <property name="target">
@@ -20,7 +16,6 @@
                 <property name="clinical" ref="surveillance.clinical" />
                 <property name="catalog" ref="surveillance.catalog" />
                 <property name="access" ref="surveillance.access" />
-                <property name="validator" ref="surveillance.validator" />
             </bean>
         </property>
         <property name="preInterceptors" ref="serviceInterceptors" />

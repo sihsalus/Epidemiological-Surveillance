@@ -357,7 +357,7 @@ public class NativePersistenceTest extends BaseModuleContextSensitiveTest {
 		value.setDateCreated(new Date());
 		value.setNotificationDate(java.util.Date.from(java.time.Instant.parse("2026-01-22T04:35:12Z")));
 		value.setHabitualResidence("3");
-
+		
 		org.openmrs.module.sihsalusepidemiologicalsurveillance.model.SurveillanceCaseTravel travel = new org.openmrs.module.sihsalusepidemiologicalsurveillance.model.SurveillanceCaseTravel();
 		travel.setSurveillanceCase(value);
 		travel.setTravelAddress(42);
@@ -400,7 +400,7 @@ public class NativePersistenceTest extends BaseModuleContextSensitiveTest {
 		assertNull(
 		    dao.byUuid(org.openmrs.module.sihsalusepidemiologicalsurveillance.model.SurveillanceCaseTravel.class, tripUuid));
 	}
-
+	
 	@Autowired
 	private SurveillanceDao dao;
 	

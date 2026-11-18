@@ -28,6 +28,9 @@ public class VerifyUnusedSurveillanceTables implements CustomTaskChange {
 				while (tables.next())
 					physical.put(tables.getString("TABLE_NAME").toLowerCase(Locale.ROOT), tables.getString("TABLE_NAME"));
 			}
+			String cases = physical.get("surveillance_case");
+			if (cases == null)
+				throw new CustomChangeException("Retirement halted: missing surveillance_case");
 			Set<String> expectedKeys = new HashSet<>(Arrays.asList("sc_record_fk", "oa_rule_fk"));
 			for (String table : TABLES) {
 				String name = physical.get(table);
@@ -55,9 +58,6 @@ public class VerifyUnusedSurveillanceTables implements CustomTaskChange {
 			}
 			if (!expectedKeys.isEmpty())
 				throw new CustomChangeException("Retirement halted: missing expected foreign keys " + expectedKeys);
-			String cases = physical.get("surveillance_case");
-			if (cases == null)
-				throw new CustomChangeException("Retirement halted: missing surveillance_case");
 			requireEmpty(connection, "SELECT COUNT(*) FROM " + database.escapeTableName(catalog, schema, cases)
 			        + " WHERE individual_record_id IS NOT NULL",
 			    "surveillance_case.individual_record_id");

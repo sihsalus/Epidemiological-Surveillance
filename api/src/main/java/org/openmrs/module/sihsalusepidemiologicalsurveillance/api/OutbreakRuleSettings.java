@@ -42,24 +42,24 @@ public class OutbreakRuleSettings {
 	
 	public static String validate(List<OutbreakRule> rules) {
 		if (rules == null)
-			invalid();
+			throw invalid();
 		Set<String> ids = new HashSet<>();
 		for (OutbreakRule r : rules) {
 			if (r == null || r.id == null || !r.id.matches("[A-Za-z0-9_-]{1,64}") || !ids.add(r.id))
-				invalid();
+				throw invalid();
 			if ("FOCUS_CASES".equals(r.type)) {
 				if (r.minimumCases == null || r.minimumCases < 0 || r.minimumCases == Integer.MAX_VALUE
 				        || !GeographicCalculator.ORIGINS.contains(r.origin) || "UNKNOWN".equals(r.origin)
 				        || !Arrays.asList("ACTIVE", "RESIDUAL", "ELIMINATED").contains(r.focus) || r.weeks != null
 				        || r.percentile != null)
-					invalid();
+					throw invalid();
 			} else if ("THRESHOLD".equals(r.type) || "CONSECUTIVE".equals(r.type)) {
 				if (r.percentile == null || !Double.isFinite(r.percentile) || r.percentile < 0 || r.percentile > 100
 				        || r.weeks == null || r.weeks < 1 || r.weeks > 53 || ("THRESHOLD".equals(r.type) && r.weeks != 1)
 				        || r.minimumCases != null || r.origin != null || r.focus != null)
-					invalid();
+					throw invalid();
 			} else
-				invalid();
+				throw invalid();
 		}
 		try {
 			return new ObjectMapper().writeValueAsString(rules);
@@ -69,7 +69,7 @@ public class OutbreakRuleSettings {
 		}
 	}
 	
-	private static void invalid() {
-		throw new SurveillanceException(422, "INVALID_OUTBREAK_RULES");
+	private static SurveillanceException invalid() {
+		return new SurveillanceException(422, "INVALID_OUTBREAK_RULES");
 	}
 }
